@@ -1,0 +1,27 @@
+{
+  "name": "fee-withdrawer-v2",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "ethers": "^5.0.19",
+    "zksync-web3": "link:../zksync-2-dev/sdk/zksync-web3.js"
+  },
+  "devDependencies": {
+    "@types/node": "^14.14.5",
+    "@types/chai": "^4.3.1",
+    "@types/mocha": "^9.1.1",
+    "prettier": "^2.5.1",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.5",
+    "mocha": "^10.0.0",
+    "chai": "^4.3.6"
+  },
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "test": "mocha -r ts-node/register tests/*",
+    "lint": "yarn prettier --config prettier-config.js --check src/*.ts",
+    "lint:fix": "yarn prettier --config prettier-config.js --write src/*.ts"
+  }
+}
