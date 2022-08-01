@@ -2,6 +2,7 @@ name: Build and publish fee-withdrawer-v2 image
 
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   push_to_registry:
