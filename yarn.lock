@@ -1169,6 +1169,7 @@ yocto-queue@^0.1.0:
   resolved "https://registry.yarnpkg.com/yocto-queue/-/yocto-queue-0.1.0.tgz#0294eb3dee05028d31ee1a5fa2c556a6aaf10a1b"
   integrity sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==
 
-"zksync-web3@link:../zksync-2-dev/sdk/zksync-web3.js":
-  version "0.0.0"
-  uid ""
+zksync-web3@=0.8.0-alpha.3:
+  version "0.8.0-alpha.3"
+  resolved "https://registry.yarnpkg.com/zksync-web3/-/zksync-web3-0.8.0-alpha.3.tgz#941aca2212e124a133ceef9bf388d01a429d950a"
+  integrity sha512-FVxBlK55lR/tgYnGzeZigQ1DXLK8aZ7mx05fNPAj3Nhyt8JZ2MLXJRedCPS60Q6e02i0Y6m2/MazLrYZMTEyeQ==
