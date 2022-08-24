@@ -166,7 +166,9 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
         const feeAccountBalance = await ethProvider.getBalance(wallet.address);
         const operatorBalance = await ethProvider.getBalance(OPERATOR_FEE_ETH_ADDRESS);
         const withdrawerBalance = await ethProvider.getBalance(WITHDRAWAL_FINALIZER_ETH_ADDRESS);
-        const paymasterL2Balance = isMainnet ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS) : BigNumber.from(0);
+        const paymasterL2Balance = TESTNET_PAYMASTER_ADDRESS
+            ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS)
+            : BigNumber.from(0);
         const transferAmounts = calculator.calculateTransferAmounts(
             feeAccountBalance,
             operatorBalance,
@@ -184,7 +186,7 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
         console.log('Step 4 - send ETH to reserve address');
         await sendETH(ethWallet, RESERVE_FEE_ACCUMULATOR_ADDRESS, transferAmounts.toAccumulatorAmount);
 
-        if (isMainnet) {
+        if (!TESTNET_PAYMASTER_ADDRESS) {
             console.log('Skipping step 5 -- send ETH to paymaster');
         } else {
             console.log('Step 5 - send ETH to paymaster');
