@@ -14,6 +14,7 @@ const FEE_ACCOUNT_PRIVATE_KEY = process.env.MISC_FEE_ACCOUNT_PRIVATE_KEY;
 const OPERATOR_FEE_ETH_ADDRESS = process.env.CHAIN_STATE_KEEPER_FEE_ACCOUNT_ADDR;
 const WITHDRAWAL_FINALIZER_ETH_ADDRESS = process.env.WITHDRAWAL_FINALIZER_ETH_ADDRESS;
 const RESERVE_FEE_ACCUMULATOR_ADDRESS = process.env.MISC_RESERVE_FEE_ACCUMULATOR_ADDRESS;
+const TESTNET_PAYMASTER_ADDRESS = process.env.CONTRACTS_L2_TESTNET_PAYMASTER_ADDR;
 
 /** API URLs */
 const L1_WEB3_API_URL = process.env.L1_RPC_ADDRESS;
@@ -27,6 +28,9 @@ const UPPER_BOUND_OPERATOR_THRESHOLD = ethers.utils.parseEther(process.env.UPPER
 
 const LOWER_BOUND_WITHDRAWER_THRESHOLD = ethers.utils.parseEther(process.env.LOWER_BOUND_WITHDRAWER_THRESHOLD);
 const UPPER_BOUND_WITHDRAWER_THRESHOLD = ethers.utils.parseEther(process.env.UPPER_BOUND_WITHDRAWER_THRESHOLD);
+
+const LOWER_BOUND_PAYMASTER_THRESHOLD = ethers.utils.parseEther(process.env.LOWER_BOUND_PAYMASTER_THRESHOLD);
+const UPPER_BOUND_PAYMASTER_THRESHOLD = ethers.utils.parseEther(process.env.UPPER_BOUND_PAYMASTER_THRESHOLD);
 
 const ETH_TRANSFER_THRESHOLD = process.env.ETH_TRANSFER_THRESHOLD
     ? ethers.utils.parseEther(process.env.ETH_TRANSFER_THRESHOLD)
@@ -108,6 +112,33 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
     }
 }
 
+async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber) {
+    const l1GasPrice = await zkWallet.ethWallet().provider.getGasPrice();
+    const l1GasLimit = BigNumber.from(zkweb3.utils.RECOMMENDED_GAS_LIMIT.DEPOSIT);
+    // Note, that right now, the base fee for deposits is 0. Maybe in the future,
+    // this will change and it will require updating this part as well.
+    const baseFee = BigNumber.from(0);
+
+    const totalFee = l1GasLimit.mul(l1GasPrice).add(baseFee);
+    if (isOperationFeeAcceptable(amount, totalFee, MAX_LIQUIDATION_FEE_PERCENT)) {
+        const tx = await zkWallet.deposit({
+            token: zkweb3.utils.ETH_ADDRESS,
+            amount,
+            to,
+            overrides: {
+                gasLimit: l1GasLimit,
+                gasPrice: l1GasPrice,
+                value: amount.add(baseFee)
+            }
+        });
+        console.log(`Depositing ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`);
+        await tx.wait();
+
+        console.log(`Deposit has succeded, tx hash: ${tx.hash}`);
+        await sendNotification(`Deposited ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`, NOTIFICATION_WEBHOOK_URL);
+    }
+}
+
 (async () => {
     const ethProvider = new ethers.providers.JsonRpcProvider(L1_WEB3_API_URL);
     const zksyncProvider = new zkweb3.Provider(ZKSYNC_WEB3_API_URL);
@@ -118,17 +149,31 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         UPPER_BOUND_OPERATOR_THRESHOLD,
         LOWER_BOUND_WITHDRAWER_THRESHOLD,
         UPPER_BOUND_WITHDRAWER_THRESHOLD,
+        LOWER_BOUND_PAYMASTER_THRESHOLD,
+        UPPER_BOUND_PAYMASTER_THRESHOLD,
         ETH_TRANSFER_THRESHOLD
     );
 
     try {
+        const isMainnet = (await ethProvider.getNetwork()).chainId == 1;
+        if (TESTNET_PAYMASTER_ADDRESS && isMainnet) {
+            throw new Error('Testnet paymaster should not be present on mainnet deployments');
+        }
+
         console.log('Step 1 - withdrawing tokens from ZkSync');
         await withdraw(wallet);
 
-        let feeAccountBalance = await ethProvider.getBalance(wallet.address);
-        let operatorBalance = await ethProvider.getBalance(OPERATOR_FEE_ETH_ADDRESS);
-        let withdrawerBalance = await ethProvider.getBalance(WITHDRAWAL_FINALIZER_ETH_ADDRESS);
-        const transferAmounts = calculator.calculateTransferAmounts(feeAccountBalance, operatorBalance, withdrawerBalance);
+        const feeAccountBalance = await ethProvider.getBalance(wallet.address);
+        const operatorBalance = await ethProvider.getBalance(OPERATOR_FEE_ETH_ADDRESS);
+        const withdrawerBalance = await ethProvider.getBalance(WITHDRAWAL_FINALIZER_ETH_ADDRESS);
+        const paymasterL2Balance = isMainnet ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS) : BigNumber.from(0);
+        const transferAmounts = calculator.calculateTransferAmounts(
+            feeAccountBalance,
+            operatorBalance,
+            withdrawerBalance,
+            paymasterL2Balance,
+            isMainnet
+        );
 
         console.log('Step 2 - send ETH to operator');
         await sendETH(ethWallet, OPERATOR_FEE_ETH_ADDRESS, transferAmounts.toOperatorAmount);
@@ -138,6 +183,13 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
         console.log('Step 4 - send ETH to reserve address');
         await sendETH(ethWallet, RESERVE_FEE_ACCUMULATOR_ADDRESS, transferAmounts.toAccumulatorAmount);
+
+        if (isMainnet) {
+            console.log('Skipping step 5 -- send ETH to paymaster');
+        } else {
+            console.log('Step 5 - send ETH to paymaster');
+            await depositETH(wallet, TESTNET_PAYMASTER_ADDRESS, transferAmounts.toTestnetPaymasterAmount);
+        }
     } catch (e) {
         console.error('Failed to proceed with fee withdrawal: ', e);
         process.exit(1);
