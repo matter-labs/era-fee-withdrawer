@@ -38,3 +38,11 @@ export async function sendNotification(text: string, webhookUrl: string) {
         console.error('Failed to send notification: ', e.toString());
     }
 }
+
+export function minBigNumber(a: ethers.BigNumber, b: ethers.BigNumber): ethers.BigNumber {
+    if (a.lt(b)) {
+        return a;
+    } else {
+        return b;
+    }
+}
