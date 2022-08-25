@@ -2,7 +2,7 @@ import * as ethers from 'ethers';
 import * as zkweb3 from 'zksync-web3';
 import { BigNumber } from 'ethers';
 import Axios from 'axios';
-import { isOperationFeeAcceptable, sendNotification } from './utils';
+import { isOperationFeeAcceptable, minBigNumber, sendNotification } from './utils';
 import { TransferCalculator } from './transfer-calculator';
 
 /** Env parameters */
@@ -98,6 +98,11 @@ async function withdraw(wallet: zkweb3.Wallet) {
 async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) {
     const gasPrice = await ethWallet.provider.getGasPrice();
     const ethTransferFee = BigNumber.from('21000').mul(gasPrice);
+    const balance = await ethWallet.getBalance();
+
+    // We can not spend more than the balance of the account
+    amount = minBigNumber(amount, balance.sub(ethTransferFee));
+
     if (isOperationFeeAcceptable(amount, ethTransferFee, MAX_LIQUIDATION_FEE_PERCENT)) {
         const tx = await ethWallet.sendTransaction({
             to,
@@ -120,6 +125,11 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
     const baseFee = BigNumber.from(0);
 
     const totalFee = l1GasLimit.mul(l1GasPrice).add(baseFee);
+    const balance = await zkWallet.ethWallet().getBalance();
+
+    // We can not spend more than the balance of the account
+    amount = minBigNumber(amount, balance.sub(totalFee));
+
     if (isOperationFeeAcceptable(amount, totalFee, MAX_LIQUIDATION_FEE_PERCENT)) {
         const tx = await zkWallet.deposit({
             token: zkweb3.utils.ETH_ADDRESS,
