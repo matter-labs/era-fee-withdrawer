@@ -11,7 +11,7 @@ import { TransferCalculator } from './transfer-calculator';
 const FEE_ACCOUNT_PRIVATE_KEY = process.env.MISC_FEE_ACCOUNT_PRIVATE_KEY;
 
 /** Addresses of accounts to distribute ETH among */
-const OPERATOR_FEE_ETH_ADDRESS = process.env.CHAIN_STATE_KEEPER_FEE_ACCOUNT_ADDR;
+const OPERATOR_ADDRESS = process.env.OPERATOR_ADDRESS;
 const WITHDRAWAL_FINALIZER_ETH_ADDRESS = process.env.WITHDRAWAL_FINALIZER_ETH_ADDRESS;
 const RESERVE_FEE_ACCUMULATOR_ADDRESS = process.env.MISC_RESERVE_FEE_ACCUMULATOR_ADDRESS;
 const TESTNET_PAYMASTER_ADDRESS = process.env.CONTRACTS_L2_TESTNET_PAYMASTER_ADDR;
@@ -174,7 +174,7 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
         await withdraw(wallet);
 
         const feeAccountBalance = await ethProvider.getBalance(wallet.address);
-        const operatorBalance = await ethProvider.getBalance(OPERATOR_FEE_ETH_ADDRESS);
+        const operatorBalance = await ethProvider.getBalance(OPERATOR_ADDRESS);
         const withdrawerBalance = await ethProvider.getBalance(WITHDRAWAL_FINALIZER_ETH_ADDRESS);
         const paymasterL2Balance = TESTNET_PAYMASTER_ADDRESS
             ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS)
@@ -188,7 +188,7 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
         );
 
         console.log('Step 2 - send ETH to operator');
-        await sendETH(ethWallet, OPERATOR_FEE_ETH_ADDRESS, transferAmounts.toOperatorAmount);
+        await sendETH(ethWallet, OPERATOR_ADDRESS, transferAmounts.toOperatorAmount);
 
         console.log('Step 3 - send ETH to withdrawal finalizer');
         await sendETH(ethWallet, WITHDRAWAL_FINALIZER_ETH_ADDRESS, transferAmounts.toWithdrawalFinalizerAmount);
