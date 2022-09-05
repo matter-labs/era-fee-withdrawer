@@ -11,6 +11,13 @@ jobs:
 
       - name: install dependencies
         run: yarn
-      
+
       - name: running tests
         run: yarn test
+
+      - name: test Docker image build
+        uses: docker/build-push-action@v2.7.0
+        with:
+          push: false
+          file: Dockerfile
+          no-cache: true
