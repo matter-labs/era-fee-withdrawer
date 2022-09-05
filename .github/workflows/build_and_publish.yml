@@ -1,7 +1,11 @@
 name: Build and publish fee-withdrawer-v2 image
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+    tags:
+      - "*"
 
 jobs:
   push_to_registry:
@@ -20,10 +24,38 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Generate build ID for Flux Image Automation
+        id: tag
+        if: ${{ startsWith(github.ref, 'refs/tags') }}
+        run: |
+          echo "::set-output name=BUILD_ID::${GITHUB_REF#refs/*/}"
+
+      - name: Generate build ID for Flux Image Automation
+        id: build
+        if: ${{ !startsWith(github.ref, 'refs/tags') }}
+        run: |
+          sha=$(git rev-parse --short HEAD)
+          ts=$(date +%s)
+          echo "::set-output name=BUILD_ID::${sha}-${ts}"
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v2.7.0
+        if: ${{ startsWith(github.ref, 'refs/tags') }}
         with:
           push: true
-          tags: "matterlabs/fee-withdrawer-v2:latest"
+          tags: |
+            "matterlabs/fee-withdrawer-v2:latest"
+            "matterlabs/fee-withdrawer-v2:${{ steps.tag.outputs.BUILD_ID }}"
+          file: Dockerfile
+          no-cache: true
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v2.7.0
+        if: ${{ !startsWith(github.ref, 'refs/tags') }}
+        with:
+          push: true
+          tags: |
+            "matterlabs/fee-withdrawer-v2:latest"
+            "matterlabs/fee-withdrawer-v2:${{ steps.build.outputs.BUILD_ID }}"
           file: Dockerfile
           no-cache: true
