@@ -35,7 +35,7 @@ jobs:
         if: ${{ !startsWith(github.ref, 'refs/tags') }}
         run: |
           sha=$(git rev-parse --short HEAD)
-          ts=$(date +%s)
+          ts=$(date +%s%N | cut -b1-13)
           echo "::set-output name=BUILD_ID::${sha}-${ts}"
 
       - name: Build and push Docker image
