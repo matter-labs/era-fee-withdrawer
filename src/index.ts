@@ -95,11 +95,30 @@ async function withdraw(wallet: zkweb3.Wallet) {
     }
 }
 
-const MAX_TRIES = 5;
-const GAS_PRICE_MULTIPLIER = 1.2;
+async function retryL1Tx(initialGasPrice, ethProvider, sendTransaction: (gasPrice) => Promise<void>) {
+    const MAX_TRIES = 5;
+    const GAS_PRICE_MULTIPLIER = 1.2;
+
+    let gasPrice = initialGasPrice;
+    for (let i = 0; i < MAX_TRIES; ++i) {
+        try {
+            await sendTransaction(gasPrice);
+            break;
+        } catch (err) {
+            if (i == MAX_TRIES - 1) {
+                console.log(`Max retries limit exceeded`);
+                throw err;
+            } else {
+                console.log(`Received error: ${err}`);
+                gasPrice = maxBigNumber(await ethProvider.getGasPrice(), gasPrice.mul(GAS_PRICE_MULTIPLIER));
+                console.log(`Retrying with higher gas price: ${gasPrice.toString()}`);
+            }
+        }
+    }
+}
 
 async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) {
-    let gasPrice = await ethWallet.provider.getGasPrice();
+    const gasPrice = await ethWallet.provider.getGasPrice();
     const ethTransferFee = BigNumber.from('21000').mul(gasPrice);
     const balance = await ethWallet.getBalance();
 
@@ -107,34 +126,18 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
     amount = minBigNumber(amount, balance.sub(ethTransferFee));
 
     if (isOperationFeeAcceptable(amount, ethTransferFee, MAX_LIQUIDATION_FEE_PERCENT)) {
-        for (let i = 0; i < MAX_TRIES; ++i) {
-            try {
-                const tx = await ethWallet.sendTransaction({
-                    to,
-                    value: amount,
-                    gasPrice
-                });
-                console.log(`Sending ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`);
-                await tx.wait();
+        await retryL1Tx(gasPrice, ethWallet.provider, async (gasPrice) => {
+            const tx = await ethWallet.sendTransaction({
+                to,
+                value: amount,
+                gasPrice
+            });
+            console.log(`Sending ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`);
+            await tx.wait();
 
-                console.log(`Transfer has succeded, tx hash: ${tx.hash}`);
-                await sendNotification(
-                    `Sent ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`,
-                    NOTIFICATION_WEBHOOK_URL
-                );
-
-                break;
-            } catch (err) {
-                if (i == MAX_TRIES - 1) {
-                    console.log(`Max retries limit exceeded`);
-                    throw err;
-                } else {
-                    console.log(`Received error: ${err}`);
-                    gasPrice = maxBigNumber(await ethWallet.provider.getGasPrice(), gasPrice.mul(GAS_PRICE_MULTIPLIER));
-                    console.log(`Retrying with higher gas price: ${gasPrice.toString()}`);
-                }
-            }
-        }
+            console.log(`Transfer has succeded, tx hash: ${tx.hash}`);
+            await sendNotification(`Sent ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`, NOTIFICATION_WEBHOOK_URL);
+        });
     } else {
         console.log(
             `Skipping transfer because fee/amount ratio is too high: fee ${ethTransferFee.toString()}, amount ${amount.toString()}`
@@ -143,7 +146,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 }
 
 async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber) {
-    let l1GasPrice = await zkWallet.ethWallet().provider.getGasPrice();
+    const l1GasPrice = await zkWallet.ethWallet().provider.getGasPrice();
     const l1GasLimit = BigNumber.from(zkweb3.utils.RECOMMENDED_GAS_LIMIT.DEPOSIT);
     // Note, that right now, the base fee for deposits is 0. Maybe in the future,
     // this will change and it will require updating this part as well.
@@ -156,39 +159,26 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
     amount = minBigNumber(amount, balance.sub(totalFee));
 
     if (isOperationFeeAcceptable(amount, totalFee, MAX_LIQUIDATION_FEE_PERCENT)) {
-        for (let i = 0; i < MAX_TRIES; ++i) {
-            try {
-                const tx = await zkWallet.deposit({
-                    token: zkweb3.utils.ETH_ADDRESS,
-                    amount,
-                    to,
-                    overrides: {
-                        gasLimit: l1GasLimit,
-                        gasPrice: l1GasPrice,
-                        value: amount.add(baseFee)
-                    }
-                });
-                console.log(`Depositing ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`);
-                await tx.wait();
-
-                console.log(`Deposit has succeded, tx hash: ${tx.hash}`);
-                await sendNotification(
-                    `Deposited ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`,
-                    NOTIFICATION_WEBHOOK_URL
-                );
-
-                break;
-            } catch (err) {
-                if (i == MAX_TRIES - 1) {
-                    console.log(`Max retries limit exceeded`);
-                    throw err;
-                } else {
-                    console.log(`Received error: ${err}`);
-                    l1GasPrice = maxBigNumber(await zkWallet.ethWallet().provider.getGasPrice(), l1GasPrice.mul(GAS_PRICE_MULTIPLIER));
-                    console.log(`Retrying with higher gas price: ${l1GasPrice.toString()}`);
+        await retryL1Tx(l1GasPrice, zkWallet.ethWallet().provider, async (l1GasPrice) => {
+            const tx = await zkWallet.deposit({
+                token: zkweb3.utils.ETH_ADDRESS,
+                amount,
+                to,
+                overrides: {
+                    gasLimit: l1GasLimit,
+                    gasPrice: l1GasPrice,
+                    value: amount.add(baseFee)
                 }
-            }
-        }
+            });
+            console.log(`Depositing ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`);
+            await tx.wait();
+
+            console.log(`Deposit has succeded, tx hash: ${tx.hash}`);
+            await sendNotification(
+                `Deposited ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`,
+                NOTIFICATION_WEBHOOK_URL
+            );
+        });
     } else {
         console.log(`Skipping deposit because fee/amount ratio is too high: fee ${totalFee.toString()}, amount ${amount.toString()}`);
     }
