@@ -97,7 +97,7 @@ async function withdraw(wallet: zkweb3.Wallet) {
 
 async function retryL1Tx(initialGasPrice, ethProvider, sendTransaction: (gasPrice) => Promise<void>) {
     const MAX_TRIES = 5;
-    const GAS_PRICE_MULTIPLIER = 1.2;
+    const GAS_PRICE_INCREASE_PERCENT = 20;
 
     let gasPrice = initialGasPrice;
     for (let i = 0; i < MAX_TRIES; ++i) {
@@ -110,7 +110,7 @@ async function retryL1Tx(initialGasPrice, ethProvider, sendTransaction: (gasPric
                 throw err;
             } else {
                 console.log(`Received error: ${err}`);
-                gasPrice = maxBigNumber(await ethProvider.getGasPrice(), gasPrice.mul(GAS_PRICE_MULTIPLIER));
+                gasPrice = maxBigNumber(await ethProvider.getGasPrice(), gasPrice.mul(100 + GAS_PRICE_INCREASE_PERCENT).div(100));
                 console.log(`Retrying with higher gas price: ${gasPrice.toString()}`);
             }
         }
