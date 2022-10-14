@@ -46,3 +46,11 @@ export function minBigNumber(a: ethers.BigNumber, b: ethers.BigNumber): ethers.B
         return b;
     }
 }
+
+export function maxBigNumber(a: ethers.BigNumber, b: ethers.BigNumber): ethers.BigNumber {
+    if (a.lt(b)) {
+        return b;
+    } else {
+        return a;
+    }
+}
