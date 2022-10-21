@@ -1,5 +1,4 @@
 import { BigNumber, BigNumberish, Contract, ethers, utils } from 'ethers';
-import Axios from 'axios';
 
 export function numberAsFractionInBIPs(number: BigNumberish, baseFraction: BigNumberish): BigNumber {
     const base = BigNumber.from(baseFraction);
@@ -26,17 +25,6 @@ export function isOperationFeeAcceptable(amount: BigNumberish, fee: BigNumberish
     }
 
     return numberAsFractionInBIPs(fee, amount).lte(operationFeeThreshold * 100);
-}
-
-export async function sendNotification(text: string, webhookUrl: string) {
-    try {
-        await Axios.post(webhookUrl, {
-            username: 'fee_seller_bot',
-            text
-        });
-    } catch (e) {
-        console.error('Failed to send notification: ', e.toString());
-    }
 }
 
 export function minBigNumber(a: ethers.BigNumber, b: ethers.BigNumber): ethers.BigNumber {

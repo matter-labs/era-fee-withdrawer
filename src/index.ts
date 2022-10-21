@@ -1,8 +1,7 @@
 import * as ethers from 'ethers';
 import * as zkweb3 from 'zksync-web3';
 import { BigNumber } from 'ethers';
-import Axios from 'axios';
-import { isOperationFeeAcceptable, minBigNumber, maxBigNumber, sendNotification } from './utils';
+import { isOperationFeeAcceptable, minBigNumber, maxBigNumber } from './utils';
 import { TransferCalculator } from './transfer-calculator';
 
 /** Env parameters */
@@ -35,9 +34,6 @@ const UPPER_BOUND_PAYMASTER_THRESHOLD = ethers.utils.parseEther(process.env.UPPE
 const ETH_TRANSFER_THRESHOLD = process.env.ETH_TRANSFER_THRESHOLD
     ? ethers.utils.parseEther(process.env.ETH_TRANSFER_THRESHOLD)
     : ethers.utils.parseEther('3.0');
-
-/** Mattermost webhook url */
-const NOTIFICATION_WEBHOOK_URL = process.env.NOTIFICATION_WEBHOOK_URL;
 
 async function withdraw(wallet: zkweb3.Wallet) {
     const balance = await wallet.getBalance();
@@ -89,7 +85,6 @@ async function withdraw(wallet: zkweb3.Wallet) {
             process.exit(1);
         }
         console.log(`Withdrawal has been finalized, tx hash: ${hash}`);
-        await sendNotification(`Withdrawn ${ethers.utils.formatEther(amount)} ETH to L1`, NOTIFICATION_WEBHOOK_URL);
     } else {
         console.log('Skipping withdrawing, fee slippage is too big');
     }
@@ -136,7 +131,6 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             await tx.wait();
 
             console.log(`Transfer has succeded, tx hash: ${tx.hash}`);
-            await sendNotification(`Sent ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`, NOTIFICATION_WEBHOOK_URL);
         });
     } else {
         console.log(
@@ -174,10 +168,6 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
             await tx.wait();
 
             console.log(`Deposit has succeded, tx hash: ${tx.hash}`);
-            await sendNotification(
-                `Deposited ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`,
-                NOTIFICATION_WEBHOOK_URL
-            );
         });
     } else {
         console.log(`Skipping deposit because fee/amount ratio is too high: fee ${totalFee.toString()}, amount ${amount.toString()}`);
