@@ -73,7 +73,6 @@ async function withdraw(wallet: zkweb3.Wallet) {
 }
 
 async function transfer(wallet: zkweb3.Wallet, amount: BigNumber, to: string) {
-    const balance = await wallet.getBalance();
     // Estimate withdrawal fee.
     const tx = await wallet.provider.getTransferTx({
         token: zkweb3.utils.ETH_ADDRESS,
@@ -84,7 +83,7 @@ async function transfer(wallet: zkweb3.Wallet, amount: BigNumber, to: string) {
     const gasLimit = (await wallet.provider.estimateGas(tx)).mul(2);
     const gasPrice = await wallet.provider.getGasPrice();
     const fee = gasLimit.mul(gasPrice);
-    if (isOperationFeeAcceptable(balance, fee, MAX_LIQUIDATION_FEE_PERCENT)) {
+    if (isOperationFeeAcceptable(amount, fee, MAX_LIQUIDATION_FEE_PERCENT)) {
         // Send withdrawal tx.
         const transferHandle = await wallet.transfer({
             token: zkweb3.utils.ETH_ADDRESS,
