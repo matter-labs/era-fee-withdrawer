@@ -85,8 +85,6 @@ async function transfer(wallet: zkweb3.Wallet, amount: BigNumber, to: string) {
     const gasPrice = await wallet.provider.getGasPrice();
     const fee = gasLimit.mul(gasPrice);
     if (isOperationFeeAcceptable(balance, fee, MAX_LIQUIDATION_FEE_PERCENT)) {
-        const amount = balance.sub(fee);
-
         // Send withdrawal tx.
         const transferHandle = await wallet.transfer({
             token: zkweb3.utils.ETH_ADDRESS,
