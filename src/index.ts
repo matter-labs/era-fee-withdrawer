@@ -65,28 +65,45 @@ async function withdraw(wallet: zkweb3.Wallet) {
             `Withdrawing ETH, amount: ${ethers.utils.formatEther(amount)}, fee: ${ethers.utils.formatEther(fee)}, tx hash: ${hash}`
         );
 
-        await withdrawHandle.waitFinalize();
+        await withdrawHandle.wait();
         console.log(`Withdrawal L2 tx has succeeded, tx hash: ${hash}`);
-
-        // Wait for L1 finalizing.
-        const intervalSec = 10;
-        const timeoutSec = 3600;
-        const maxRetries = timeoutSec / intervalSec;
-        let finalized = false;
-        for (let i = 0; i < maxRetries; ++i) {
-            if (await wallet.isWithdrawalFinalized(hash)) {
-                finalized = true;
-                break;
-            }
-            await zkweb3.utils.sleep(intervalSec * 1000);
-        }
-        if (!finalized) {
-            console.error(`Withdrawal has not been finalized, tx hash: ${hash}`);
-            process.exit(1);
-        }
-        console.log(`Withdrawal has been finalized, tx hash: ${hash}`);
     } else {
         console.log('Skipping withdrawing, fee slippage is too big');
+    }
+}
+
+async function transfer(wallet: zkweb3.Wallet, amount: BigNumber, to: string) {
+    const balance = await wallet.getBalance();
+    // Estimate withdrawal fee.
+    const tx = await wallet.provider.getTransferTx({
+        token: zkweb3.utils.ETH_ADDRESS,
+        amount,
+        from: wallet.address,
+        to
+    });
+    const gasLimit = await wallet.provider.estimateGas(tx);
+    const gasPrice = await wallet.provider.getGasPrice();
+    const fee = gasLimit.mul(gasPrice);
+    if (isOperationFeeAcceptable(balance, fee, MAX_LIQUIDATION_FEE_PERCENT)) {
+        const amount = balance.sub(fee);
+
+        // Send withdrawal tx.
+        const transferHandle = await wallet.transfer({
+            token: zkweb3.utils.ETH_ADDRESS,
+            amount,
+            to,
+            overrides: {
+                gasPrice,
+                gasLimit
+            }
+        });
+        const hash = transferHandle.hash;
+        console.log(`Transfer ETH, amount: ${ethers.utils.formatEther(amount)}, fee: ${ethers.utils.formatEther(fee)}, tx hash: ${hash}`);
+
+        await transferHandle.wait();
+        console.log(`Transfer L2 tx has succeeded, tx hash: ${hash}`);
+    } else {
+        console.log('Skipping transfering, fee slippage is too big');
     }
 }
 
@@ -195,38 +212,51 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
             throw new Error('Testnet paymaster should not be present on mainnet deployments');
         }
 
-        console.log('Step 1 - withdrawing tokens from ZkSync');
-        await withdraw(wallet);
-
-        const feeAccountBalance = await ethProvider.getBalance(wallet.address);
+        const l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
+        const l2feeAccountBalance = await zksyncProvider.getBalance(wallet.address);
         const operatorBalance = await ethProvider.getBalance(OPERATOR_ADDRESS);
         const withdrawerBalance = await ethProvider.getBalance(WITHDRAWAL_FINALIZER_ETH_ADDRESS);
         const paymasterL2Balance = TESTNET_PAYMASTER_ADDRESS
             ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS)
             : BigNumber.from(0);
-        const transferAmounts = calculator.calculateTransferAmounts(
-            feeAccountBalance,
+
+        // Transaction finalization consumes a significant amount of time but it's not required to send money for payment through l1
+        // The easiest way to keep paymaster full of money is just send money to paymaster first through l2
+        const l2transferAmounts = calculator.calculateTransferAmounts(
+            l2feeAccountBalance,
             operatorBalance,
             withdrawerBalance,
             paymasterL2Balance,
             isMainnet
         );
 
-        console.log('Step 2 - send ETH to operator');
+        if (!TESTNET_PAYMASTER_ADDRESS) {
+            console.log('Skipping step 1 -- send ETH to paymaster');
+        } else {
+            console.log('Step 1 - send ETH to paymaster');
+            await transfer(wallet, l2transferAmounts.toTestnetPaymasterAmount, TESTNET_PAYMASTER_ADDRESS,);
+        }
+
+        console.log('Step 2 - withdrawing tokens from ZkSync');
+        await withdraw(wallet);
+
+        const transferAmounts = calculator.calculateTransferAmounts(
+            l1feeAccountBalance,
+            operatorBalance,
+            withdrawerBalance,
+            // We will never send money to paymaster throgugh l1
+            UPPER_BOUND_PAYMASTER_THRESHOLD,
+            isMainnet
+        );
+
+        console.log('Step 3 - send ETH to operator');
         await sendETH(ethWallet, OPERATOR_ADDRESS, transferAmounts.toOperatorAmount);
 
-        console.log('Step 3 - send ETH to withdrawal finalizer');
+        console.log('Step 4 - send ETH to withdrawal finalizer');
         await sendETH(ethWallet, WITHDRAWAL_FINALIZER_ETH_ADDRESS, transferAmounts.toWithdrawalFinalizerAmount);
 
-        console.log('Step 4 - send ETH to reserve address');
+        console.log('Step 5 - send ETH to reserve address');
         await sendETH(ethWallet, RESERVE_FEE_ACCUMULATOR_ADDRESS, transferAmounts.toAccumulatorAmount);
-
-        if (!TESTNET_PAYMASTER_ADDRESS) {
-            console.log('Skipping step 5 -- send ETH to paymaster');
-        } else {
-            console.log('Step 5 - send ETH to paymaster');
-            await depositETH(wallet, TESTNET_PAYMASTER_ADDRESS, transferAmounts.toTestnetPaymasterAmount);
-        }
     } catch (e) {
         console.error('Failed to proceed with fee withdrawal: ', e);
         process.exit(1);
