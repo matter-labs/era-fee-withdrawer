@@ -81,7 +81,7 @@ async function transfer(wallet: zkweb3.Wallet, amount: BigNumber, to: string) {
         from: wallet.address,
         to
     });
-    const gasLimit = await wallet.provider.estimateGas(tx);
+    const gasLimit = (await wallet.provider.estimateGas(tx)).mul(2);
     const gasPrice = await wallet.provider.getGasPrice();
     const fee = gasLimit.mul(gasPrice);
     if (isOperationFeeAcceptable(balance, fee, MAX_LIQUIDATION_FEE_PERCENT)) {
