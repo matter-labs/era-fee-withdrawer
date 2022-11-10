@@ -34,7 +34,7 @@ export class TransferCalculator {
         // Sub threshold amount from the fee account. We have to have some Treshhold on fee account for paying L1 fees.
         allowedEth = allowedEth.sub(this.ethTransferThreshold);
 
-         // 1st priority
+        // 1st priority
         // Calculate the transfer amount for paymaster (only on testnets)
         if (!isMainnet && allowedEth.gt(0) && paymasterL2Balance.lt(this.lowerBoundPaymasterThreshold)) {
             let maxAmountNeeded = this.upperBoundPaymasterThreshold.sub(paymasterL2Balance);
@@ -42,7 +42,7 @@ export class TransferCalculator {
             allowedEth = allowedEth.sub(toTestnetPaymasterAmount);
         }
         console.log(`Amount which main wallet can send to paymaster: ${allowedEth}`);
-        
+
         // 2nd priority
         // Calculate the transfer amount for operator.
         if (allowedEth.gt(0) && operatorBalance.lt(this.lowerBoundOperatorThreshold)) {
@@ -51,7 +51,7 @@ export class TransferCalculator {
             allowedEth = allowedEth.sub(toOperatorAmount);
         }
         console.log(`Amount which main wallet can send to operator: ${allowedEth}`);
-        
+
         // 3rd priority
         // Calculate the transfer amount for withdrawer.
         if (allowedEth.gt(0) && withdrawerBalance.lt(this.lowerBoundWithdrawerThreshold)) {
@@ -61,8 +61,7 @@ export class TransferCalculator {
         }
         console.log(`Amount which main wallet can send to withdrawer: ${allowedEth}`);
 
-        
-        return { 
+        return {
             toOperatorAmount,
             toWithdrawalFinalizerAmount,
             toTestnetPaymasterAmount,

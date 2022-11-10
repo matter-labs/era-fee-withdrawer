@@ -219,7 +219,7 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
 
         const withdrawerBalance = await ethProvider.getBalance(WITHDRAWAL_FINALIZER_ETH_ADDRESS);
         console.log(`Withdrawer balance before top-up: ${ethers.utils.formatEther(withdrawerBalance)}`);
-        
+
         const paymasterL2Balance = TESTNET_PAYMASTER_ADDRESS
             ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS)
             : BigNumber.from(0);
@@ -239,7 +239,7 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
             console.log('Skipping step 1 -- send ETH to paymaster');
         } else {
             console.log('Step 1 - send ETH to paymaster');
-            await transfer(wallet, l2transferAmounts.toTestnetPaymasterAmount, TESTNET_PAYMASTER_ADDRESS,);
+            await transfer(wallet, l2transferAmounts.toTestnetPaymasterAmount, TESTNET_PAYMASTER_ADDRESS);
         }
 
         console.log('Step 2 - withdrawing tokens from ZkSync');
