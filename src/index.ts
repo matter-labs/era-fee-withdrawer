@@ -208,7 +208,10 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
             throw new Error('Testnet paymaster should not be present on mainnet deployments');
         }
 
-        const l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
+        let l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
+        if (l1feeAccountBalance.lt(0)) {
+            l1feeAccountBalance = BigNumber.from(0);
+        }
         console.log(`L1 fee account balance before top-up: ${ethers.utils.formatEther(l1feeAccountBalance)}`);
 
         const l2feeAccountBalance = await zksyncProvider.getBalance(wallet.address);

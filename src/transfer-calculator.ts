@@ -33,6 +33,9 @@ export class TransferCalculator {
 
         // Sub threshold amount from the fee account. We have to have some Treshhold on fee account for paying L1 fees.
         allowedEth = allowedEth.sub(this.ethTransferThreshold);
+        if (allowedEth.lt(0)) {
+            allowedEth = BigNumber.from(0);
+        }
 
         // 1st priority
         // Calculate the transfer amount for paymaster (only on testnets)
