@@ -208,18 +208,18 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
             throw new Error('Testnet paymaster should not be present on mainnet deployments');
         }
 
-        const l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
-        console.log(`L1 fee account balance before top-up: ${ethers.utils.formatEther(l1feeAccountBalance)}`);
+        let l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
+        console.log(`Fee account L1 balance before top-up: ${ethers.utils.formatEther(l1feeAccountBalance)}`);
 
         const l2feeAccountBalance = await zksyncProvider.getBalance(wallet.address);
 
-        console.log(`L2 fee account balance before top-up: ${ethers.utils.formatEther(l2feeAccountBalance)}`);
+        console.log(`Fee account L2 balance before top-up: ${ethers.utils.formatEther(l2feeAccountBalance)}`);
 
         const operatorBalance = await ethProvider.getBalance(OPERATOR_ADDRESS);
-        console.log(`Operator balance before top-up: ${ethers.utils.formatEther(operatorBalance)}`);
+        console.log(`Operator L1 balance before top-up: ${ethers.utils.formatEther(operatorBalance)}`);
 
         const withdrawerBalance = await ethProvider.getBalance(WITHDRAWAL_FINALIZER_ETH_ADDRESS);
-        console.log(`Withdrawer balance before top-up: ${ethers.utils.formatEther(withdrawerBalance)}`);
+        console.log(`Withdrawer L1 balance before top-up: ${ethers.utils.formatEther(withdrawerBalance)}`);
 
         const paymasterL2Balance = TESTNET_PAYMASTER_ADDRESS
             ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS)
@@ -230,8 +230,8 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
         // The easiest way to keep paymaster full of money is just send money to paymaster first through l2
         const l2transferAmounts = calculator.calculateTransferAmounts(
             l2feeAccountBalance,
-            operatorBalance,
-            withdrawerBalance,
+            UPPER_BOUND_OPERATOR_THRESHOLD,
+            UPPER_BOUND_WITHDRAWER_THRESHOLD,
             paymasterL2Balance,
             isMainnet
         );
@@ -245,6 +245,9 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
 
         console.log('Step 2 - withdrawing tokens from ZkSync');
         await withdraw(wallet);
+
+        l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
+        console.log(`L1 fee account balance after withdraw: ${ethers.utils.formatEther(l1feeAccountBalance)}`);
 
         const transferAmounts = calculator.calculateTransferAmounts(
             l1feeAccountBalance,
