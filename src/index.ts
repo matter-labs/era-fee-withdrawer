@@ -214,7 +214,10 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
         }
         console.log(`L1 fee account balance before top-up: ${ethers.utils.formatEther(l1feeAccountBalance)}`);
 
-        const l2feeAccountBalance = await zksyncProvider.getBalance(wallet.address);
+        let l2feeAccountBalance = await zksyncProvider.getBalance(wallet.address);
+        if (l2feeAccountBalance.lt(0)) {
+            l2feeAccountBalance = BigNumber.from(0);
+        }
         console.log(`L2 fee account balance before top-up: ${ethers.utils.formatEther(l2feeAccountBalance)}`);
 
         const operatorBalance = await ethProvider.getBalance(OPERATOR_ADDRESS);
