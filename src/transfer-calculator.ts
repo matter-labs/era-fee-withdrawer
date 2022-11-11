@@ -34,26 +34,39 @@ export class TransferCalculator {
         // Sub threshold amount from the fee account. We have to have some Treshhold on fee account for paying L1 fees.
         allowedEth = allowedEth.sub(this.ethTransferThreshold);
 
-        // Calculate the transfer amount for operator.
-        if (allowedEth.gt(0) && operatorBalance.lt(this.lowerBoundOperatorThreshold)) {
-            let maxAmountNeeded = this.upperBoundOperatorThreshold.sub(operatorBalance);
-            toOperatorAmount = maxAmountNeeded.gt(allowedEth) ? allowedEth : maxAmountNeeded; // Min
-            allowedEth = allowedEth.sub(toOperatorAmount);
-        }
-        // Calculate the transfer amount for withdrawer.
-        if (allowedEth.gt(0) && withdrawerBalance.lt(this.lowerBoundWithdrawerThreshold)) {
-            let maxAmountNeeded = this.upperBoundWithdrawerThreshold.sub(withdrawerBalance);
-            toWithdrawalFinalizerAmount = maxAmountNeeded.gt(allowedEth) ? allowedEth : maxAmountNeeded; // Min
-            allowedEth = allowedEth.sub(toWithdrawalFinalizerAmount);
-        }
+        // 1st priority
         // Calculate the transfer amount for paymaster (only on testnets)
         if (!isMainnet && allowedEth.gt(0) && paymasterL2Balance.lt(this.lowerBoundPaymasterThreshold)) {
             let maxAmountNeeded = this.upperBoundPaymasterThreshold.sub(paymasterL2Balance);
             toTestnetPaymasterAmount = maxAmountNeeded.gt(allowedEth) ? allowedEth : maxAmountNeeded; // Min
             allowedEth = allowedEth.sub(toTestnetPaymasterAmount);
         }
+        console.log(`Amount which main wallet can send to paymaster: ${allowedEth}`);
 
-        // The rest of amount we have to send to reserve address.
-        return { toOperatorAmount, toWithdrawalFinalizerAmount, toTestnetPaymasterAmount, toAccumulatorAmount: allowedEth };
+        // 2nd priority
+        // Calculate the transfer amount for operator.
+        if (allowedEth.gt(0) && operatorBalance.lt(this.lowerBoundOperatorThreshold)) {
+            let maxAmountNeeded = this.upperBoundOperatorThreshold.sub(operatorBalance);
+            toOperatorAmount = maxAmountNeeded.gt(allowedEth) ? allowedEth : maxAmountNeeded; // Min
+            allowedEth = allowedEth.sub(toOperatorAmount);
+        }
+        console.log(`Amount which main wallet can send to operator: ${allowedEth}`);
+
+        // 3rd priority
+        // Calculate the transfer amount for withdrawer.
+        if (allowedEth.gt(0) && withdrawerBalance.lt(this.lowerBoundWithdrawerThreshold)) {
+            let maxAmountNeeded = this.upperBoundWithdrawerThreshold.sub(withdrawerBalance);
+            toWithdrawalFinalizerAmount = maxAmountNeeded.gt(allowedEth) ? allowedEth : maxAmountNeeded; // Min
+            allowedEth = allowedEth.sub(toWithdrawalFinalizerAmount);
+        }
+        console.log(`Amount which main wallet can send to withdrawer: ${allowedEth}`);
+
+        return {
+            toOperatorAmount,
+            toWithdrawalFinalizerAmount,
+            toTestnetPaymasterAmount,
+            // The rest of amount we have to send to the reserve address.
+            toAccumulatorAmount: allowedEth
+        };
     }
 }

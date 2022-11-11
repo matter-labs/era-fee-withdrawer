@@ -84,7 +84,6 @@ async function transfer(wallet: zkweb3.Wallet, amount: BigNumber, to: string) {
     const gasPrice = await wallet.provider.getGasPrice();
     const fee = gasLimit.mul(gasPrice);
     if (isOperationFeeAcceptable(amount, fee, MAX_LIQUIDATION_FEE_PERCENT)) {
-        // Send withdrawal tx.
         const transferHandle = await wallet.transfer({
             token: zkweb3.utils.ETH_ADDRESS,
             amount,
@@ -210,12 +209,21 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
         }
 
         const l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
+        console.log(`L1 fee account balance before top-up: ${ethers.utils.formatEther(l1feeAccountBalance)}`);
+
         const l2feeAccountBalance = await zksyncProvider.getBalance(wallet.address);
+        console.log(`L2 fee account balance before top-up: ${ethers.utils.formatEther(l2feeAccountBalance)}`);
+
         const operatorBalance = await ethProvider.getBalance(OPERATOR_ADDRESS);
+        console.log(`Operator balance before top-up: ${ethers.utils.formatEther(operatorBalance)}`);
+
         const withdrawerBalance = await ethProvider.getBalance(WITHDRAWAL_FINALIZER_ETH_ADDRESS);
+        console.log(`Withdrawer balance before top-up: ${ethers.utils.formatEther(withdrawerBalance)}`);
+
         const paymasterL2Balance = TESTNET_PAYMASTER_ADDRESS
             ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS)
             : BigNumber.from(0);
+        console.log(`Paymaster L2 balance before top-up: ${ethers.utils.formatEther(paymasterL2Balance)}`);
 
         // Transaction finalization consumes a significant amount of time but it's not required to send money for payment through l1
         // The easiest way to keep paymaster full of money is just send money to paymaster first through l2
@@ -231,7 +239,7 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
             console.log('Skipping step 1 -- send ETH to paymaster');
         } else {
             console.log('Step 1 - send ETH to paymaster');
-            await transfer(wallet, l2transferAmounts.toTestnetPaymasterAmount, TESTNET_PAYMASTER_ADDRESS,);
+            await transfer(wallet, l2transferAmounts.toTestnetPaymasterAmount, TESTNET_PAYMASTER_ADDRESS);
         }
 
         console.log('Step 2 - withdrawing tokens from ZkSync');
