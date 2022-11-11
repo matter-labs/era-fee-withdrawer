@@ -36,7 +36,7 @@ describe('Transfer calculator', function () {
         expect(balances.toTestnetPaymasterAmount.toNumber()).eq(0);
         expect(balances.toAccumulatorAmount.toNumber()).eq(69);
         
-        // Send all money to operator
+        // Send all money to paymaster
         balances = calculator.calculateTransferAmounts(BigNumber.from(11), BigNumber.from(2), BigNumber.from(3), BigNumber.from(4), false);
         expect(balances.toTestnetPaymasterAmount.toNumber()).eq(8);
         expect(balances.toOperatorAmount.toNumber()).eq(0);
