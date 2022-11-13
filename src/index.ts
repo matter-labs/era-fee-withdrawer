@@ -15,8 +15,8 @@ const RESERVE_FEE_ACCUMULATOR_ADDRESS = process.env.MISC_RESERVE_FEE_ACCUMULATOR
 const TESTNET_PAYMASTER_ADDRESS = process.env.CONTRACTS_L2_TESTNET_PAYMASTER_ADDR;
 
 /** API URLs */
-const L1_WEB3_API_URL = process.env.L1_RPC_ADDRESS;
-const ZKSYNC_WEB3_API_URL = process.env.ZKSYNC_WEB3_API_URL;
+export const L1_WEB3_API_URL = process.env.L1_RPC_ADDRESS;
+export const ZKSYNC_WEB3_API_URL = process.env.ZKSYNC_WEB3_API_URL;
 
 /** Thresholds */
 const MAX_LIQUIDATION_FEE_PERCENT = parseInt(process.env.MISC_MAX_LIQUIDATION_FEE_PERCENT);
@@ -38,7 +38,8 @@ const L2_ETH_TRANSFER_THRESHOLD = process.env.L2_ETH_TRANSFER_THRESHOLD
     ? ethers.utils.parseEther(process.env.L2_ETH_TRANSFER_THRESHOLD)
     : ethers.utils.parseEther('1.0');
 
-async function withdraw(wallet: zkweb3.Wallet, amount: BigNumber) {
+async function withdraw(wallet: zkweb3.Wallet) {
+    let amount = await wallet.getBalance(zkweb3.utils.ETH_ADDRESS);
     // Estimate withdrawal fee.
     const tx = await wallet.provider.getWithdrawTx({
         token: zkweb3.utils.ETH_ADDRESS,
@@ -198,6 +199,27 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
     const zksyncProvider = new zkweb3.Provider(ZKSYNC_WEB3_API_URL);
     const wallet = new zkweb3.Wallet(FEE_ACCOUNT_PRIVATE_KEY, zksyncProvider, ethProvider);
     const ethWallet = new ethers.Wallet(FEE_ACCOUNT_PRIVATE_KEY, ethProvider);
+    let paymasterTransferCalculator = new TransferCalculator(
+        UPPER_BOUND_PAYMASTER_THRESHOLD,
+        LOWER_BOUND_PAYMASTER_THRESHOLD,
+        L2_ETH_TRANSFER_THRESHOLD
+    );
+    let operatorTransferCalculator = new TransferCalculator(
+        UPPER_BOUND_OPERATOR_THRESHOLD,
+        LOWER_BOUND_OPERATOR_THRESHOLD,
+        L1_ETH_TRANSFER_THRESHOLD
+    );
+    let withdrawerTransferCalculator = new TransferCalculator(
+        UPPER_BOUND_WITHDRAWER_THRESHOLD,
+        LOWER_BOUND_WITHDRAWER_THRESHOLD,
+        L1_ETH_TRANSFER_THRESHOLD
+    );
+    let reserveTransferCalculator = new TransferCalculator(
+        BigNumber.from(Number.MAX_SAFE_INTEGER),
+        BigNumber.from(0),
+        L1_ETH_TRANSFER_THRESHOLD
+    );
+
     try {
         const isMainnet = (await ethProvider.getNetwork()).chainId == 1;
         if (TESTNET_PAYMASTER_ADDRESS && isMainnet) {
@@ -208,7 +230,6 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
         console.log(`Fee account L1 balance before top-up: ${ethers.utils.formatEther(l1feeAccountBalance)}`);
 
         const l2feeAccountBalance = await zksyncProvider.getBalance(wallet.address);
-
         console.log(`Fee account L2 balance before top-up: ${ethers.utils.formatEther(l2feeAccountBalance)}`);
 
         const operatorBalance = await ethProvider.getBalance(OPERATOR_ADDRESS);
@@ -222,16 +243,8 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
             : BigNumber.from(0);
         console.log(`Paymaster L2 balance before top-up: ${ethers.utils.formatEther(paymasterL2Balance)}`);
 
-        let paymasterTransferCalculator = new TransferCalculator(
-            UPPER_BOUND_PAYMASTER_THRESHOLD,
-            LOWER_BOUND_PAYMASTER_THRESHOLD,
-            L2_ETH_TRANSFER_THRESHOLD
-        );
-        let [transferAmount, remainingL2FeeAccBalance] = paymasterTransferCalculator.calculateTransferAmount(
-            l2feeAccountBalance,
-            paymasterL2Balance
-        );
-        console.log(`Amount which main wallet can send to paymaster: ${transferAmount}; remaining: ${remainingL2FeeAccBalance}`);
+        let transferAmount = await paymasterTransferCalculator.calculateTransferAmount(wallet, paymasterL2Balance);
+        console.log(`Amount which main wallet can send to paymaster: ${transferAmount}`);
 
         if (!TESTNET_PAYMASTER_ADDRESS) {
             console.log('Skipping step 1 -- send ETH to paymaster');
@@ -241,48 +254,24 @@ async function depositETH(zkWallet: zkweb3.Wallet, to: string, amount: BigNumber
         }
 
         console.log('Step 2 - withdrawing tokens from ZkSync');
-        await withdraw(wallet, remainingL2FeeAccBalance);
+        await withdraw(wallet);
 
         l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
         console.log(`L1 fee account balance after withdraw: ${ethers.utils.formatEther(l1feeAccountBalance)}`);
 
-        let operatorTransferCalculator = new TransferCalculator(
-            UPPER_BOUND_OPERATOR_THRESHOLD,
-            LOWER_BOUND_OPERATOR_THRESHOLD,
-            L1_ETH_TRANSFER_THRESHOLD
-        );
-        let [l1TransferAmount, remainingL1FeeAccBalance] = operatorTransferCalculator.calculateTransferAmount(
-            l1feeAccountBalance,
-            operatorBalance
-        );
-        console.log(`Amount which main wallet can send to operator: ${l1TransferAmount}; remaining: ${remainingL1FeeAccBalance}`);
+        let l1TransferAmount = await operatorTransferCalculator.calculateTransferAmount(wallet, operatorBalance);
+        console.log(`Amount which main wallet can send to operator: ${l1TransferAmount}`);
 
         console.log('Step 3 - send ETH to operator');
         await sendETH(ethWallet, OPERATOR_ADDRESS, l1TransferAmount);
 
-        let withdrawerTransferCalculator = new TransferCalculator(
-            UPPER_BOUND_WITHDRAWER_THRESHOLD,
-            LOWER_BOUND_WITHDRAWER_THRESHOLD,
-            L1_ETH_TRANSFER_THRESHOLD
-        );
-        [l1TransferAmount, remainingL1FeeAccBalance] = withdrawerTransferCalculator.calculateTransferAmount(
-            l1feeAccountBalance,
-            withdrawerBalance
-        );
-        console.log(`Amount which main wallet can send to withdrawer: ${l1TransferAmount}; remaining: ${remainingL1FeeAccBalance}`);
+        l1TransferAmount = await withdrawerTransferCalculator.calculateTransferAmount(wallet, withdrawerBalance);
+        console.log(`Amount which main wallet can send to withdrawer: ${l1TransferAmount}`);
 
         console.log('Step 4 - send ETH to withdrawal finalizer');
         await sendETH(ethWallet, WITHDRAWAL_FINALIZER_ETH_ADDRESS, l1TransferAmount);
 
-        let reserveTransferCalculator = new TransferCalculator(
-            BigNumber.from(Number.MAX_SAFE_INTEGER),
-            BigNumber.from(0),
-            L1_ETH_TRANSFER_THRESHOLD
-        );
-        [l1TransferAmount, remainingL1FeeAccBalance] = reserveTransferCalculator.calculateTransferAmount(
-            l1feeAccountBalance,
-            BigNumber.from(0)
-        );
+        l1TransferAmount = await reserveTransferCalculator.calculateTransferAmount(wallet, BigNumber.from(0));
         console.log(`Amount which main wallet can send to reserve: ${l1TransferAmount}`);
 
         console.log('Step 5 - send ETH to reserve address');
