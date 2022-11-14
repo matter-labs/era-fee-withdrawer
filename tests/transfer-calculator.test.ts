@@ -3,8 +3,8 @@ import { expect } from 'chai';
 import { calculateTransferAmount } from '../src/transfer-calculator';
 
 describe('Transfer calculator tests', function () {
-    // to test calculateTransferAmount some thresholds are needed
-    // as an sample, paymaster is used here
+    // to test `calculateTransferAmount()` some thresholds are needed
+    // as an sample paymaster is used here
     const lowerPaymasterThreshold = BigNumber.from(30);
     const upperPaymasterThreshold = BigNumber.from(33);
     const l2EthFeeThreshold = BigNumber.from(4);
