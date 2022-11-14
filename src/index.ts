@@ -2,6 +2,7 @@ import * as ethers from 'ethers';
 import * as zkweb3 from 'zksync-web3';
 import { BigNumber } from 'ethers';
 import { isOperationFeeAcceptable, minBigNumber, maxBigNumber } from './utils';
+import { calculateTransferAmount } from './transfer-calculator';
 
 /** Env parameters */
 /** L2 fee account PK */
@@ -184,9 +185,6 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         const withdrawerBalance = await ethProvider.getBalance(WITHDRAWAL_FINALIZER_ETH_ADDRESS);
         console.log(`Withdrawer L1 balance before top-up: ${ethers.utils.formatEther(withdrawerBalance)}`);
 
-        const reserverBalance = await ethProvider.getBalance(RESERVE_FEE_ACCUMULATOR_ADDRESS);
-        console.log(`Reserve accumulator L1 balance before top-up: ${ethers.utils.formatEther(withdrawerBalance)}`);
-
         const paymasterL2Balance = TESTNET_PAYMASTER_ADDRESS
             ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS)
             : BigNumber.from(0);
@@ -254,7 +252,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         await sendETH(ethWallet, WITHDRAWAL_FINALIZER_ETH_ADDRESS, transferAmount);
 
         [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
-            reserverBalance,
+            BigNumber.from(0), // we don't need to know what balance is, all that left should be sent to to this address
             BigNumber.from(0),
             BigNumber.from(Number.MAX_SAFE_INTEGER),
             BigNumber.from(1),

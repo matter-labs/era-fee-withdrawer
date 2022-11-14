@@ -1,5 +1,5 @@
-import { BigNumber, utils} from "ethers";
-import { maxBigNumber, minBigNumber} from "./utils";
+import { BigNumber, utils } from 'ethers';
+import { maxBigNumber, minBigNumber } from './utils';
 
 export function calculateTransferAmount(
     feeWalletBalance: BigNumber, // sender
