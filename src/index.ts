@@ -41,8 +41,17 @@ const L2_ETH_TRANSFER_THRESHOLD = process.env.L2_ETH_TRANSFER_THRESHOLD
 
 async function withdrawForL1TopUps(wallet: zkweb3.Wallet) {
     // There should be reserve of `L2_ETH_TRANSFER_THRESHOLD` amount on L2
-    let amount = await wallet.getBalance(zkweb3.utils.ETH_ADDRESS);
-    amount = amount.sub(L2_ETH_TRANSFER_THRESHOLD);
+    let balance = await wallet.getBalance(zkweb3.utils.ETH_ADDRESS);
+    let amount = balance.sub(L2_ETH_TRANSFER_THRESHOLD);
+    if (amount.lte(0)) {
+        console.log(
+            `Withdrawal can not be done: main wallet balance is less than l2 ETH transfer threshold;\n
+            main wallet balance: ${balance};\n
+            threshold: ${L2_ETH_TRANSFER_THRESHOLD}
+            `
+        );
+        return;
+    }
     // Estimate withdrawal fee.
     const tx = await wallet.provider.getWithdrawTx({
         token: zkweb3.utils.ETH_ADDRESS,
