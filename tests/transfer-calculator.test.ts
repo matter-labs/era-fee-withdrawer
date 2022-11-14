@@ -22,7 +22,7 @@ describe('Transfer calculator tests', function () {
         expect(feeL2RemainingBalance).to.deep.eq(BigNumber.from(67));
     });
 
-    it('Should calculate 0: insufficient eth for fee account', function () {
+    it('Should calculate 0: insufficient fee account eth amount', function () {
         let initialL2FeeAccountBalance = BigNumber.from(4);
         let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
             initialL2FeeAccountBalance,
