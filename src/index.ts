@@ -37,27 +37,6 @@ const L2_ETH_TRANSFER_THRESHOLD = process.env.L2_ETH_TRANSFER_THRESHOLD
     ? ethers.utils.parseEther(process.env.L2_ETH_TRANSFER_THRESHOLD)
     : ethers.utils.parseEther('1.0');
 
-export function calculateTransferAmount(
-    feeWalletBalance: BigNumber, // sender
-    receiverBalance: BigNumber,
-    upperBoundThreshold: BigNumber,
-    lowerBoundThreshold: BigNumber,
-    transferThreshold: BigNumber
-): BigNumber[] {
-    console.log(`current fee account balance is ${ethers.utils.formatEther(feeWalletBalance)} ETH`);
-
-    let allowedEth = maxBigNumber(feeWalletBalance.sub(transferThreshold), BigNumber.from(0));
-    let amountToTransfer = BigNumber.from(0);
-
-    if (allowedEth.gt(0) && receiverBalance.lt(lowerBoundThreshold)) {
-        console.log(`Calculating transfer amount`);
-        let maxAmountNeeded = upperBoundThreshold.sub(receiverBalance);
-        amountToTransfer = minBigNumber(allowedEth, maxAmountNeeded); // Min
-        feeWalletBalance = feeWalletBalance.sub(amountToTransfer);
-    }
-    return [amountToTransfer, feeWalletBalance];
-}
-
 async function withdrawForL1TopUps(wallet: zkweb3.Wallet) {
     // There should be reserve of L2_ETH_TRANSFER_THRESHOLD amount of ETH on L2
     let amount = await wallet.getBalance(zkweb3.utils.ETH_ADDRESS);

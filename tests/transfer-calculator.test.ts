@@ -1,6 +1,6 @@
-import { BigNumber, utils } from 'ethers';
-import { expect } from 'chai'
-import { calculateTransferAmount } from '../src/index'
+import { BigNumber } from 'ethers';
+import { expect } from 'chai';
+import { calculateTransferAmount } from '../src/transfer-calculator';
 
 function mockWithdraw(curL2Balance: BigNumber, curL1Balance: BigNumber, l2EthFeeThreshold: BigNumber): BigNumber {
     return curL2Balance.add(curL1Balance).sub(l2EthFeeThreshold);
@@ -20,7 +20,7 @@ describe('Transfer calculator tests', function () {
         let initialL1FeeAccountBalance = BigNumber.from(20);
         let initialL2FeeAccountBalance = BigNumber.from(100);
 
-         // All accounts has enough balance send everything to reserve account 
+        // All accounts has enough balance send everything to reserve account
         let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
             initialL2FeeAccountBalance,
             BigNumber.from(0),
@@ -32,7 +32,7 @@ describe('Transfer calculator tests', function () {
         expect(feeL2RemainingBalance).to.deep.eq(BigNumber.from(67));
 
         let newL1FeeAccountBalance = mockWithdraw(feeL2RemainingBalance, initialL1FeeAccountBalance, l2EthFeeThreshold);
-        expect(newL1FeeAccountBalance).to.deep.eq(BigNumber.from(20+67-4));
+        expect(newL1FeeAccountBalance).to.deep.eq(BigNumber.from(20 + 67 - 4));
 
         let feeL1RemainingBalance;
         [transferAmount, feeL1RemainingBalance] = calculateTransferAmount(
@@ -56,11 +56,11 @@ describe('Transfer calculator tests', function () {
 
         expect(transferAmount).to.deep.eq(BigNumber.from(22));
         expect(feeL1RemainingBalance).to.deep.eq(BigNumber.from(50));
-        
+
         [transferAmount, feeL1RemainingBalance] = calculateTransferAmount(
             feeL1RemainingBalance,
             BigNumber.from(0),
-            BigNumber.from(Number.MAX_SAFE_INTEGER-1),
+            BigNumber.from(Number.MAX_SAFE_INTEGER - 1),
             BigNumber.from(1),
             l1EthFeeThreshold
         );
@@ -68,7 +68,7 @@ describe('Transfer calculator tests', function () {
         expect(feeL1RemainingBalance).to.deep.eq(BigNumber.from(10));
     });
 
-    it('Only paymaster and operator accounts should be topped up', function (){
+    it('Only paymaster and operator accounts should be topped up', function () {
         let initialL1FeeAccountBalance = BigNumber.from(20);
         let initialL2FeeAccountBalance = BigNumber.from(4 + 33 + 1);
 
@@ -107,20 +107,19 @@ describe('Transfer calculator tests', function () {
 
         expect(transferAmount).to.deep.eq(BigNumber.from(0));
         expect(feeL1RemainingBalance).to.deep.eq(BigNumber.from(10));
-        
+
         [transferAmount, feeL1RemainingBalance] = calculateTransferAmount(
             feeL1RemainingBalance,
             BigNumber.from(0),
-            BigNumber.from(Number.MAX_SAFE_INTEGER-1),
+            BigNumber.from(Number.MAX_SAFE_INTEGER - 1),
             BigNumber.from(1),
             l1EthFeeThreshold
         );
         expect(transferAmount).to.deep.eq(BigNumber.from(0));
         expect(feeL1RemainingBalance).to.deep.eq(BigNumber.from(10));
-
     });
 
-    it('Only paymaster account should be topped up', function (){
+    it('Only paymaster account should be topped up', function () {
         let initialL1FeeAccountBalance = BigNumber.from(10);
         let initialL2FeeAccountBalance = BigNumber.from(4 + 33);
 
@@ -159,23 +158,22 @@ describe('Transfer calculator tests', function () {
 
         expect(transferAmount).to.deep.eq(BigNumber.from(0));
         expect(feeL1RemainingBalance).to.deep.eq(BigNumber.from(10));
-        
+
         [transferAmount, feeL1RemainingBalance] = calculateTransferAmount(
             feeL1RemainingBalance,
             BigNumber.from(0),
-            BigNumber.from(Number.MAX_SAFE_INTEGER-1),
+            BigNumber.from(Number.MAX_SAFE_INTEGER - 1),
             BigNumber.from(1),
             l1EthFeeThreshold
         );
         expect(transferAmount).to.deep.eq(BigNumber.from(0));
         expect(feeL1RemainingBalance).to.deep.eq(BigNumber.from(10));
-
     });
 
     it('No account should be topped up', function () {
         let initialL1FeeAccountBalance = BigNumber.from(10);
         let initialL2FeeAccountBalance = BigNumber.from(4);
-    
+
         let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
             initialL2FeeAccountBalance,
             BigNumber.from(0),
@@ -186,7 +184,6 @@ describe('Transfer calculator tests', function () {
         expect(transferAmount).to.deep.eq(BigNumber.from(0));
         expect(feeL2RemainingBalance).to.deep.eq(BigNumber.from(4));
 
-
         mockWithdraw(feeL2RemainingBalance, initialL1FeeAccountBalance, l2EthFeeThreshold);
 
         let feeL1RemainingBalance;
@@ -195,7 +192,7 @@ describe('Transfer calculator tests', function () {
             BigNumber.from(0),
             upperPaymasterThreshold,
             lowerOperatorThreshold,
-            l2EthFeeThreshold
+            l1EthFeeThreshold
         );
         expect(transferAmount).to.deep.eq(BigNumber.from(0));
         expect(feeL1RemainingBalance).to.deep.eq(BigNumber.from(10));
@@ -204,7 +201,7 @@ describe('Transfer calculator tests', function () {
     it('Should top up not full paymaster amount', function () {
         let initialL1FeeAccountBalance = BigNumber.from(10);
         let initialL2FeeAccountBalance = BigNumber.from(5);
-    
+
         let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
             initialL2FeeAccountBalance,
             BigNumber.from(0),
@@ -215,18 +212,16 @@ describe('Transfer calculator tests', function () {
         expect(transferAmount).to.deep.eq(BigNumber.from(1));
         expect(feeL2RemainingBalance).to.deep.eq(BigNumber.from(4));
 
+        let feeL1RemainingBalance = mockWithdraw(feeL2RemainingBalance, initialL1FeeAccountBalance, l2EthFeeThreshold);
 
-        mockWithdraw(feeL2RemainingBalance, initialL1FeeAccountBalance, l2EthFeeThreshold);
-        
-        let feeL1RemainingBalance;
         [transferAmount, feeL1RemainingBalance] = calculateTransferAmount(
             initialL1FeeAccountBalance,
             BigNumber.from(0),
             upperPaymasterThreshold,
             lowerOperatorThreshold,
-            l2EthFeeThreshold
+            l1EthFeeThreshold
         );
         expect(transferAmount).to.deep.eq(BigNumber.from(0));
         expect(feeL1RemainingBalance).to.deep.eq(BigNumber.from(10));
     });
-})
+});
