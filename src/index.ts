@@ -256,7 +256,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         transferAmount = l1feeAccountBalance.sub(L1_ETH_TRANSFER_THRESHOLD);
         console.log(
             `Amount which fee account can send to reserve accumulator: ${ethers.utils.formatEther(transferAmount)} ETH;
-            fee account l1 balance in this case will be ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`
+            fee account l1 balance in this case will be ${ethers.utils.formatEther(L1_ETH_TRANSFER_THRESHOLD)} ETH`
         );
         console.log('Step 5 - send ETH to reserve address');
         await sendETH(ethWallet, RESERVE_FEE_ACCUMULATOR_ADDRESS, transferAmount);
