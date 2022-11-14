@@ -5,6 +5,7 @@ import { isOperationFeeAcceptable, minBigNumber, maxBigNumber } from './utils';
 import { calculateTransferAmount } from './transfer-calculator';
 
 /** Env parameters */
+
 /** L2 fee account PK */
 const FEE_ACCOUNT_PRIVATE_KEY = process.env.MISC_FEE_ACCOUNT_PRIVATE_KEY;
 
@@ -39,7 +40,7 @@ const L2_ETH_TRANSFER_THRESHOLD = process.env.L2_ETH_TRANSFER_THRESHOLD
     : ethers.utils.parseEther('1.0');
 
 async function withdrawForL1TopUps(wallet: zkweb3.Wallet) {
-    // There should be reserve of L2_ETH_TRANSFER_THRESHOLD amount of ETH on L2
+    // There should be reserve of `L2_ETH_TRANSFER_THRESHOLD` amount on L2
     let amount = await wallet.getBalance(zkweb3.utils.ETH_ADDRESS);
     amount = amount.sub(L2_ETH_TRANSFER_THRESHOLD);
     // Estimate withdrawal fee.
@@ -192,21 +193,21 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
         // calculate amounts for top ups on L2
         let transferAmount;
-        [transferAmount, l2feeAccountBalance] = await calculateTransferAmount(
-            l2feeAccountBalance,
-            paymasterL2Balance,
-            UPPER_BOUND_PAYMASTER_THRESHOLD,
-            LOWER_BOUND_PAYMASTER_THRESHOLD,
-            L2_ETH_TRANSFER_THRESHOLD
-        );
-        console.log(
-            `Amount which main wallet can send to paymaster: ${ethers.utils.formatEther(transferAmount)} ETH;
-            fee account l2 balance in this case will be ${ethers.utils.formatEther(l2feeAccountBalance)} ETH`
-        );
-
         if (!TESTNET_PAYMASTER_ADDRESS) {
             console.log('Skipping step 1 -- send ETH to paymaster');
         } else {
+            [transferAmount, l2feeAccountBalance] = await calculateTransferAmount(
+                l2feeAccountBalance,
+                paymasterL2Balance,
+                UPPER_BOUND_PAYMASTER_THRESHOLD,
+                LOWER_BOUND_PAYMASTER_THRESHOLD,
+                L2_ETH_TRANSFER_THRESHOLD
+            );
+            console.log(
+                `Amount which main wallet can send to paymaster: ${ethers.utils.formatEther(transferAmount)} ETH;
+                fee account l2 balance in this case will be ${ethers.utils.formatEther(l2feeAccountBalance)} ETH`
+            );
+
             console.log('Step 1 - send ETH to paymaster');
             await topUpPaymaster(wallet, transferAmount);
         }
