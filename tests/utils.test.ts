@@ -1,5 +1,5 @@
 import { BigNumber, utils } from 'ethers';
-import { expect } from 'chai'
+import { expect } from 'chai';
 
 import { isOperationFeeAcceptable, numberAsFractionInBIPs } from '../src/utils';
 
@@ -25,4 +25,4 @@ describe('Test utils', function () {
         expect(isOperationFeeAcceptable(utils.parseEther('200.0'), utils.parseEther('5.0'), 2)).eq(false);
         expect(isOperationFeeAcceptable('0', BigNumber.from(100), 2)).eq(false);
     });
-})
+});

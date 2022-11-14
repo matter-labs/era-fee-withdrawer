@@ -1,52 +1,63 @@
-import { BigNumber, utils } from 'ethers';
-import { expect } from 'chai'
-import { TransferCalculator } from '../src/transfer-calculator'
+import { BigNumber } from 'ethers';
+import { expect } from 'chai';
+import { calculateTransferAmount } from '../src/transfer-calculator';
 
+describe('Transfer calculator tests', function () {
+    // to test `calculateTransferAmount()` some thresholds are needed
+    // as an sample paymaster is used here
+    const lowerPaymasterThreshold = BigNumber.from(30);
+    const upperPaymasterThreshold = BigNumber.from(33);
+    const l2EthFeeThreshold = BigNumber.from(4);
 
-describe('Transfer calculator', function () {
-    it('Calculate transfers', function () {
-        const lowerOperatorThreshold = BigNumber.from(10);
-        const lowerWithdrawerThreshold = BigNumber.from(20);
-        const lowerPaymasterThreshold = BigNumber.from(30);
-        const upperOperatorThreshold = BigNumber.from(11);
-        const upperWithdrawerThreshold = BigNumber.from(22);
-        const upperPaymasterThreshold = BigNumber.from(33);
-        const feeSellerThreshold = BigNumber.from(3);
+    it('Should calculate upper threshold ETH amount', function () {
+        let initialL2FeeAccountBalance = BigNumber.from(100);
+        let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
+            initialL2FeeAccountBalance,
+            BigNumber.from(0),
+            upperPaymasterThreshold,
+            lowerPaymasterThreshold,
+            l2EthFeeThreshold
+        );
+        expect(transferAmount).to.deep.eq(BigNumber.from(33));
+        expect(feeL2RemainingBalance).to.deep.eq(BigNumber.from(67));
+    });
 
-        const calculator = new TransferCalculator(lowerOperatorThreshold, upperOperatorThreshold,
-            lowerWithdrawerThreshold, upperWithdrawerThreshold, lowerPaymasterThreshold, upperPaymasterThreshold, feeSellerThreshold);
-        // All accounts has enough balance send everything to reserve account 
-        let balances = calculator.calculateTransferAmounts(BigNumber.from(100), lowerOperatorThreshold, lowerWithdrawerThreshold, lowerPaymasterThreshold, false);
-        expect(balances.toOperatorAmount.toNumber()).eq(0);
-        expect(balances.toWithdrawalFinalizerAmount.toNumber()).eq(0);
-        expect(balances.toTestnetPaymasterAmount.toNumber()).eq(0);
-        expect(balances.toAccumulatorAmount.toNumber()).eq(97);
-        
-        // Enough money to split by accounts 
-        balances = calculator.calculateTransferAmounts(BigNumber.from(100), BigNumber.from(2), BigNumber.from(3), BigNumber.from(4), false);
-        expect(balances.toOperatorAmount.toNumber()).eq(9);
-        expect(balances.toWithdrawalFinalizerAmount.toNumber()).eq(19);
-        expect(balances.toTestnetPaymasterAmount.toNumber()).eq(29);
-        expect(balances.toAccumulatorAmount.toNumber()).eq(40);
+    it('Should calculate 0: insufficient `fee account` ETH amount', function () {
+        let initialL2FeeAccountBalance = BigNumber.from(4);
+        let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
+            initialL2FeeAccountBalance,
+            BigNumber.from(0),
+            upperPaymasterThreshold,
+            lowerPaymasterThreshold,
+            l2EthFeeThreshold
+        );
+        expect(transferAmount).to.deep.eq(BigNumber.from(0));
+        expect(feeL2RemainingBalance).to.deep.eq(BigNumber.from(4));
+    });
 
-        // Do not send funds to paymaster on mainnet 
-        balances = calculator.calculateTransferAmounts(BigNumber.from(100), BigNumber.from(2), BigNumber.from(3), BigNumber.from(4), true);
-        expect(balances.toOperatorAmount.toNumber()).eq(9);
-        expect(balances.toWithdrawalFinalizerAmount.toNumber()).eq(19);
-        expect(balances.toTestnetPaymasterAmount.toNumber()).eq(0);
-        expect(balances.toAccumulatorAmount.toNumber()).eq(69);
-        
-        // Send all money to paymaster
-        balances = calculator.calculateTransferAmounts(BigNumber.from(11), BigNumber.from(2), BigNumber.from(3), BigNumber.from(4), false);
-        expect(balances.toTestnetPaymasterAmount.toNumber()).eq(8);
-        expect(balances.toOperatorAmount.toNumber()).eq(0);
-        expect(balances.toWithdrawalFinalizerAmount.toNumber()).eq(0);
-        expect(balances.toAccumulatorAmount.toNumber()).eq(0);
-        
-        // Send money to paymaster and operator
-        balances = calculator.calculateTransferAmounts(BigNumber.from(15), BigNumber.from(2), BigNumber.from(3), BigNumber.from(24), false);
-        expect(balances.toTestnetPaymasterAmount.toNumber()).eq(9);
-        expect(balances.toOperatorAmount.toNumber()).eq(3);
-        expect(balances.toAccumulatorAmount.toNumber()).eq(0);
-    })
-})
+    it('Should calculate 0: reached lower ETH threshold', function () {
+        let initialL2FeeAccountBalance = BigNumber.from(4);
+        let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
+            initialL2FeeAccountBalance,
+            BigNumber.from(30),
+            upperPaymasterThreshold,
+            lowerPaymasterThreshold,
+            l2EthFeeThreshold
+        );
+        expect(transferAmount).to.deep.eq(BigNumber.from(0));
+        expect(feeL2RemainingBalance).to.deep.eq(BigNumber.from(4));
+    });
+
+    it('Should calculate small ETH amount', function () {
+        let initialL2FeeAccountBalance = BigNumber.from(5);
+        let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
+            initialL2FeeAccountBalance,
+            BigNumber.from(0),
+            upperPaymasterThreshold,
+            lowerPaymasterThreshold,
+            l2EthFeeThreshold
+        );
+        expect(transferAmount).to.deep.eq(BigNumber.from(1));
+        expect(feeL2RemainingBalance).to.deep.eq(BigNumber.from(4));
+    });
+});
