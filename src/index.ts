@@ -190,7 +190,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS)
             : BigNumber.from(0);
         console.log(`Paymaster L2 balance before top-up: ${ethers.utils.formatEther(paymasterL2Balance)}`);
-        
+
         let transferAmount;
 
         // calculate amounts for top ups on L2
@@ -253,13 +253,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         console.log('Step 4 - send ETH to withdrawal finalizer');
         await sendETH(ethWallet, WITHDRAWAL_FINALIZER_ETH_ADDRESS, transferAmount);
 
-        [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
-            BigNumber.from(0), // we don't need to know what balance is, all that left should be sent to to this address
-            BigNumber.from(0),
-            BigNumber.from(Number.MAX_SAFE_INTEGER),
-            BigNumber.from(1),
-            L1_ETH_TRANSFER_THRESHOLD
-        );
+        transferAmount = l1feeAccountBalance.sub(L1_ETH_TRANSFER_THRESHOLD);
         console.log(
             `Amount which fee account can send to reserve accumulator: ${ethers.utils.formatEther(transferAmount)} ETH;
             fee account l1 balance in this case will be ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`

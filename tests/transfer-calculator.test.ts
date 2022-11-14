@@ -39,7 +39,7 @@ describe('Transfer calculator tests', function () {
         let initialL2FeeAccountBalance = BigNumber.from(4);
         let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
             initialL2FeeAccountBalance,
-            BigNumber.from(0),
+            BigNumber.from(30),
             upperPaymasterThreshold,
             lowerPaymasterThreshold,
             l2EthFeeThreshold
