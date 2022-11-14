@@ -190,9 +190,10 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS)
             : BigNumber.from(0);
         console.log(`Paymaster L2 balance before top-up: ${ethers.utils.formatEther(paymasterL2Balance)}`);
+        
+        let transferAmount;
 
         // calculate amounts for top ups on L2
-        let transferAmount;
         if (!TESTNET_PAYMASTER_ADDRESS) {
             console.log('Skipping step 1 -- send ETH to paymaster');
         } else {
