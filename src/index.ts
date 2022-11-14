@@ -50,6 +50,7 @@ async function withdrawForL1TopUps(wallet: zkweb3.Wallet) {
             threshold: ${L2_ETH_TRANSFER_THRESHOLD}
             `
         );
+        return;
     }
     // Estimate withdrawal fee.
     const tx = await wallet.provider.getWithdrawTx({
