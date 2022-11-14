@@ -41,39 +41,48 @@ const L2_ETH_TRANSFER_THRESHOLD = process.env.L2_ETH_TRANSFER_THRESHOLD
 
 async function withdrawForL1TopUps(wallet: zkweb3.Wallet) {
     // There should be reserve of `L2_ETH_TRANSFER_THRESHOLD` amount on L2
-    let amount = await wallet.getBalance(zkweb3.utils.ETH_ADDRESS);
-    amount = amount.sub(L2_ETH_TRANSFER_THRESHOLD);
-    // Estimate withdrawal fee.
-    const tx = await wallet.provider.getWithdrawTx({
-        token: zkweb3.utils.ETH_ADDRESS,
-        amount,
-        from: wallet.address,
-        to: wallet.address
-    });
-    const gasLimit = await wallet.provider.estimateGas(tx);
-    const gasPrice = await wallet.provider.getGasPrice();
-    const fee = gasLimit.mul(gasPrice);
-    if (isOperationFeeAcceptable(amount, fee, MAX_LIQUIDATION_FEE_PERCENT)) {
-        amount = amount.sub(fee);
-        // Send withdrawal tx.
-        const withdrawHandle = await wallet.withdraw({
+    let balance = await wallet.getBalance(zkweb3.utils.ETH_ADDRESS);
+    let amount = balance.sub(L2_ETH_TRANSFER_THRESHOLD);
+    if (amount.gt(0)) {
+        // Estimate withdrawal fee.
+        const tx = await wallet.provider.getWithdrawTx({
             token: zkweb3.utils.ETH_ADDRESS,
             amount,
-            to: wallet.address,
-            overrides: {
-                gasPrice,
-                gasLimit
-            }
+            from: wallet.address,
+            to: wallet.address
         });
-        const hash = withdrawHandle.hash;
-        console.log(
-            `Withdrawing ETH, amount: ${ethers.utils.formatEther(amount)}, fee: ${ethers.utils.formatEther(fee)}, tx hash: ${hash}`
-        );
+        const gasLimit = await wallet.provider.estimateGas(tx);
+        const gasPrice = await wallet.provider.getGasPrice();
+        const fee = gasLimit.mul(gasPrice);
+        if (isOperationFeeAcceptable(amount, fee, MAX_LIQUIDATION_FEE_PERCENT)) {
+            amount = amount.sub(fee);
+            // Send withdrawal tx.
+            const withdrawHandle = await wallet.withdraw({
+                token: zkweb3.utils.ETH_ADDRESS,
+                amount,
+                to: wallet.address,
+                overrides: {
+                    gasPrice,
+                    gasLimit
+                }
+            });
+            const hash = withdrawHandle.hash;
+            console.log(
+                `Withdrawing ETH, amount: ${ethers.utils.formatEther(amount)}, fee: ${ethers.utils.formatEther(fee)}, tx hash: ${hash}`
+            );
 
-        await withdrawHandle.wait();
-        console.log(`Withdrawal L2 tx has succeeded, tx hash: ${hash}`);
+            await withdrawHandle.wait();
+            console.log(`Withdrawal L2 tx has succeeded, tx hash: ${hash}`);
+        } else {
+            console.log('Skipping withdrawing, fee slippage is too big');
+        }
     } else {
-        console.log('Skipping withdrawing, fee slippage is too big');
+        console.log(
+            `Withdraw can not be done: main wallet balance is less than l2 ETH transfer threshold;\n
+            main wallet balance: ${balance};\n
+            threshold: ${L2_ETH_TRANSFER_THRESHOLD}
+            `
+        );
     }
 }
 
