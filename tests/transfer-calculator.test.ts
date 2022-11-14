@@ -9,7 +9,7 @@ describe('Transfer calculator tests', function () {
     const upperPaymasterThreshold = BigNumber.from(33);
     const l2EthFeeThreshold = BigNumber.from(4);
 
-    it('Should calculate upper threshold amount', function () {
+    it('Should calculate upper threshold ETH amount', function () {
         let initialL2FeeAccountBalance = BigNumber.from(100);
         let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
             initialL2FeeAccountBalance,
@@ -22,7 +22,7 @@ describe('Transfer calculator tests', function () {
         expect(feeL2RemainingBalance).to.deep.eq(BigNumber.from(67));
     });
 
-    it('Should calculate 0: insufficient fee account eth amount', function () {
+    it('Should calculate 0: insufficient `fee account` ETH amount', function () {
         let initialL2FeeAccountBalance = BigNumber.from(4);
         let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
             initialL2FeeAccountBalance,
@@ -35,7 +35,7 @@ describe('Transfer calculator tests', function () {
         expect(feeL2RemainingBalance).to.deep.eq(BigNumber.from(4));
     });
 
-    it('Should calculate 0: reached lower threshold', function () {
+    it('Should calculate 0: reached lower ETH threshold', function () {
         let initialL2FeeAccountBalance = BigNumber.from(4);
         let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
             initialL2FeeAccountBalance,
@@ -48,7 +48,7 @@ describe('Transfer calculator tests', function () {
         expect(feeL2RemainingBalance).to.deep.eq(BigNumber.from(4));
     });
 
-    it('Should calculate small amount', function () {
+    it('Should calculate small ETH amount', function () {
         let initialL2FeeAccountBalance = BigNumber.from(5);
         let [transferAmount, feeL2RemainingBalance] = calculateTransferAmount(
             initialL2FeeAccountBalance,
