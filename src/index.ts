@@ -160,8 +160,8 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
                 gasPrice
             });
             console.log(`Sending ${ethers.utils.formatEther(amount)} ETH to ${to}, tx hash: ${tx.hash}`);
-            await tx.wait();
-
+            // Do not wait for more than 30 minutes
+            await ethWallet.provider.waitForTransaction(tx.hash, 3, 1800000);
             console.log(`Transfer has succeded, tx hash: ${tx.hash}`);
         });
     } else {
