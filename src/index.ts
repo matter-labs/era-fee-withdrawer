@@ -123,7 +123,7 @@ async function topUpPaymaster(wallet: zkweb3.Wallet, amount: BigNumber) {
 
 async function retryL1Tx(initialGasPrice, ethProvider, sendTransaction: (gasPrice) => Promise<void>) {
     const MAX_TRIES = 5;
-    const GAS_PRICE_INCREASE_PERCENT = 20;
+    const GAS_PRICE_INCREASE_PERCENT = 40;
 
     let gasPrice = initialGasPrice;
     for (let i = 0; i < MAX_TRIES; ++i) {
@@ -144,7 +144,8 @@ async function retryL1Tx(initialGasPrice, ethProvider, sendTransaction: (gasPric
 }
 
 async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) {
-    const gasPrice = await ethWallet.provider.getGasPrice();
+    let gasPrice = await ethWallet.provider.getGasPrice();
+    gasPrice = gasPrice.mul(2);
     const ethTransferFee = BigNumber.from('21000').mul(gasPrice);
     const balance = await ethWallet.getBalance();
 
