@@ -121,7 +121,7 @@ async function L2topUp(wallet: zkweb3.Wallet, amount: BigNumber, l2AccountAddres
         await transferHandle.wait();
         console.log(`Transfer to ${l2AccountName} has succeeded, tx hash: ${hash}`);
     } else {
-        console.log(`Skipping transferring of ${l2AccountName}, fee slippage is too big`);
+        console.log(`Skipping transferring to ${l2AccountName}, fee slippage is too big`);
     }
 }
 
