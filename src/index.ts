@@ -201,13 +201,13 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         const withdrawerBalance = await ethProvider.getBalance(WITHDRAWAL_FINALIZER_ETH_ADDRESS);
         console.log(`Withdrawer L1 balance before top-up: ${ethers.utils.formatEther(withdrawerBalance)}`);
 
-        const watchdogBalance = await ethProvider.getBalance(WATCHDOG_ADDRESS);
-        console.log(`Watchdog L1 balance before top-up: ${ethers.utils.formatEther(watchdogBalance)}`);
-
         const paymasterL2Balance = TESTNET_PAYMASTER_ADDRESS
             ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS)
             : BigNumber.from(0);
         console.log(`Paymaster L2 balance before top-up: ${ethers.utils.formatEther(paymasterL2Balance)}`);
+
+        const watchdogBalance = await zksyncProvider.getBalance(WATCHDOG_ADDRESS);
+        console.log(`Watchdog L2 balance before top-up: ${ethers.utils.formatEther(watchdogBalance)}`);
 
         console.log(`----------------------------------------------------------------------------`);
 
