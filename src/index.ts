@@ -235,19 +235,24 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
         console.log(`----------------------------------------------------------------------------`);
 
-        [transferAmount, l2feeAccountBalance] = await calculateTransferAmount(
-            l2feeAccountBalance,
-            watchdogBalance,
-            UPPER_BOUND_WATCHDOG_THRESHOLD,
-            LOWER_BOUND_WATCHDOG_THRESHOLD,
-            L2_ETH_TRANSFER_THRESHOLD
-        );
-        console.log(
-            `Amount which fee account can send to era-watchdog: ${ethers.utils.formatEther(transferAmount)} ETH;
-            fee account l2 balance in this case will be ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`
-        );
-        console.log('Step 2 - send ETH to era-watchdog');
-        await L2topUp(wallet, transferAmount, WATCHDOG_ADDRESS, 'watchdog');
+        if (!WATCHDOG_ADDRESS) {
+            console.log('Skipping step 2 -- send ETH to era-watchdog');
+        } else {
+            [transferAmount, l2feeAccountBalance] = await calculateTransferAmount(
+                l2feeAccountBalance,
+                watchdogBalance,
+                UPPER_BOUND_WATCHDOG_THRESHOLD,
+                LOWER_BOUND_WATCHDOG_THRESHOLD,
+                L2_ETH_TRANSFER_THRESHOLD
+            );
+            console.log(
+                `Amount which fee account can send to era-watchdog: ${ethers.utils.formatEther(transferAmount)} ETH;
+                fee account l2 balance in this case will be ${ethers.utils.formatEther(l2feeAccountBalance)} ETH`
+            );
+
+            console.log('Step 2 - send ETH to era-watchdog');
+            await L2topUp(wallet, transferAmount, WATCHDOG_ADDRESS, 'watchdog');
+        }
 
         console.log(`----------------------------------------------------------------------------`);
 
