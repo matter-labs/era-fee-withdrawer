@@ -14,6 +14,7 @@ const OPERATOR_ADDRESS = process.env.OPERATOR_ADDRESS;
 const WITHDRAWAL_FINALIZER_ETH_ADDRESS = process.env.WITHDRAWAL_FINALIZER_ETH_ADDRESS;
 const RESERVE_FEE_ACCUMULATOR_ADDRESS = process.env.MISC_RESERVE_FEE_ACCUMULATOR_ADDRESS;
 const TESTNET_PAYMASTER_ADDRESS = process.env.CONTRACTS_L2_TESTNET_PAYMASTER_ADDR;
+const WATCHDOG_ADDRESS = process.env.WATCHDOG_ADDRESS;
 
 /** API URLs */
 const L1_WEB3_API_URL = process.env.L1_RPC_ADDRESS;
@@ -30,6 +31,9 @@ const UPPER_BOUND_WITHDRAWER_THRESHOLD = ethers.utils.parseEther(process.env.UPP
 
 const LOWER_BOUND_PAYMASTER_THRESHOLD = ethers.utils.parseEther(process.env.LOWER_BOUND_PAYMASTER_THRESHOLD);
 const UPPER_BOUND_PAYMASTER_THRESHOLD = ethers.utils.parseEther(process.env.UPPER_BOUND_PAYMASTER_THRESHOLD);
+
+const LOWER_BOUND_WATCHDOG_THRESHOLD = ethers.utils.parseEther(process.env.LOWER_BOUND_WATCHDOG_THRESHOLD);
+const UPPER_BOUND_WATCHDOG_THRESHOLD = ethers.utils.parseEther(process.env.UPPER_BOUND_WATCHDOG_THRESHOLD);
 
 const L1_ETH_TRANSFER_THRESHOLD = process.env.L1_ETH_TRANSFER_THRESHOLD
     ? ethers.utils.parseEther(process.env.L1_ETH_TRANSFER_THRESHOLD)
@@ -86,13 +90,13 @@ async function withdrawForL1TopUps(wallet: zkweb3.Wallet) {
     }
 }
 
-async function topUpPaymaster(wallet: zkweb3.Wallet, amount: BigNumber) {
+async function L2topUp(wallet: zkweb3.Wallet, amount: BigNumber, l2AccountAddress: string, l2AccountName: string) {
     // Estimate withdrawal fee.
     const tx = await wallet.provider.getTransferTx({
         token: zkweb3.utils.ETH_ADDRESS,
         amount,
         from: wallet.address,
-        to: TESTNET_PAYMASTER_ADDRESS
+        to: l2AccountAddress
     });
     const gasLimit = (await wallet.provider.estimateGas(tx)).mul(2);
     const gasPrice = await wallet.provider.getGasPrice();
@@ -101,7 +105,7 @@ async function topUpPaymaster(wallet: zkweb3.Wallet, amount: BigNumber) {
         const transferHandle = await wallet.transfer({
             token: zkweb3.utils.ETH_ADDRESS,
             amount,
-            to: TESTNET_PAYMASTER_ADDRESS,
+            to: l2AccountAddress,
             overrides: {
                 gasPrice,
                 gasLimit
@@ -109,15 +113,15 @@ async function topUpPaymaster(wallet: zkweb3.Wallet, amount: BigNumber) {
         });
         const hash = transferHandle.hash;
         console.log(
-            `ETH transfer to paymaster, amount: ${ethers.utils.formatEther(amount)}, fee: ${ethers.utils.formatEther(
+            `ETH transfer to ${l2AccountName}, amount: ${ethers.utils.formatEther(amount)}, fee: ${ethers.utils.formatEther(
                 fee
             )}, tx hash: ${hash}`
         );
 
         await transferHandle.wait();
-        console.log(`Transfer to paymaster has succeeded, tx hash: ${hash}`);
+        console.log(`Transfer to ${l2AccountName} has succeeded, tx hash: ${hash}`);
     } else {
-        console.log('Skipping transfering, fee slippage is too big');
+        console.log(`Skipping transferring to ${l2AccountName}, fee slippage is too big`);
     }
 }
 
@@ -183,6 +187,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             throw new Error('Testnet paymaster should not be present on mainnet deployments');
         }
 
+        console.log(`----------------------------------------------------------------------------`);
         // get initial balances
         let l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
         console.log(`Fee account L1 balance before top-up: ${ethers.utils.formatEther(l1feeAccountBalance)}`);
@@ -200,6 +205,11 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS)
             : BigNumber.from(0);
         console.log(`Paymaster L2 balance before top-up: ${ethers.utils.formatEther(paymasterL2Balance)}`);
+
+        const watchdogBalance = await zksyncProvider.getBalance(WATCHDOG_ADDRESS);
+        console.log(`Watchdog L2 balance before top-up: ${ethers.utils.formatEther(watchdogBalance)}`);
+
+        console.log(`----------------------------------------------------------------------------`);
 
         let transferAmount;
 
@@ -220,10 +230,33 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             );
 
             console.log('Step 1 - send ETH to paymaster');
-            await topUpPaymaster(wallet, transferAmount);
+            await L2topUp(wallet, transferAmount, TESTNET_PAYMASTER_ADDRESS, 'paymaster');
         }
 
-        console.log('Step 2 - withdrawing tokens from ZkSync');
+        console.log(`----------------------------------------------------------------------------`);
+
+        if (!WATCHDOG_ADDRESS) {
+            console.log('Skipping step 2 -- send ETH to era-watchdog');
+        } else {
+            [transferAmount, l2feeAccountBalance] = await calculateTransferAmount(
+                l2feeAccountBalance,
+                watchdogBalance,
+                UPPER_BOUND_WATCHDOG_THRESHOLD,
+                LOWER_BOUND_WATCHDOG_THRESHOLD,
+                L2_ETH_TRANSFER_THRESHOLD
+            );
+            console.log(
+                `Amount which fee account can send to era-watchdog: ${ethers.utils.formatEther(transferAmount)} ETH;
+                fee account l2 balance in this case will be ${ethers.utils.formatEther(l2feeAccountBalance)} ETH`
+            );
+
+            console.log('Step 2 - send ETH to era-watchdog');
+            await L2topUp(wallet, transferAmount, WATCHDOG_ADDRESS, 'watchdog');
+        }
+
+        console.log(`----------------------------------------------------------------------------`);
+
+        console.log('Step 3 - withdrawing tokens from ZkSync');
         await withdrawForL1TopUps(wallet);
 
         l2feeAccountBalance = await wallet.getBalance(wallet.address);
@@ -231,6 +264,8 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
         l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
         console.log(`L1 fee account balance after withdraw: ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`);
+
+        console.log(`----------------------------------------------------------------------------`);
 
         // calculate amounts for top ups on L1
         [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
@@ -245,8 +280,10 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             fee account l1 balance in this case will be ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`
         );
 
-        console.log('Step 3 - send ETH to operator');
+        console.log('Step 4 - send ETH to operator');
         await sendETH(ethWallet, OPERATOR_ADDRESS, transferAmount);
+
+        console.log(`----------------------------------------------------------------------------`);
 
         [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
             l1feeAccountBalance,
@@ -260,15 +297,17 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             fee account l1 balance in this case will be ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`
         );
 
-        console.log('Step 4 - send ETH to withdrawal finalizer');
+        console.log('Step 5 - send ETH to withdrawal finalizer');
         await sendETH(ethWallet, WITHDRAWAL_FINALIZER_ETH_ADDRESS, transferAmount);
+
+        console.log(`----------------------------------------------------------------------------`);
 
         transferAmount = l1feeAccountBalance.sub(L1_ETH_TRANSFER_THRESHOLD);
         console.log(
             `Amount which fee account can send to reserve accumulator: ${ethers.utils.formatEther(transferAmount)} ETH;
             fee account l1 balance in this case will be ${ethers.utils.formatEther(L1_ETH_TRANSFER_THRESHOLD)} ETH`
         );
-        console.log('Step 5 - send ETH to reserve address');
+        console.log('Step 6 - send ETH to reserve address');
         await sendETH(ethWallet, RESERVE_FEE_ACCUMULATOR_ADDRESS, transferAmount);
     } catch (e) {
         console.error('Failed to proceed with fee withdrawal: ', e);
