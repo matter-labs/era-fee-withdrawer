@@ -16,7 +16,7 @@ export function isOperationFeeAcceptable(amount: BigNumberish, fee: BigNumberish
     amount = BigNumber.from(amount);
     fee = BigNumber.from(fee);
 
-    if (amount.lte(0) || amount.lte(fee)) {
+    if (amount.lte(fee)) {
         return false;
     }
 
