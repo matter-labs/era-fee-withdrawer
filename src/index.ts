@@ -154,7 +154,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
     const balance = await ethWallet.getBalance();
 
     // We can not spend more than the balance of the account
-    let allowedEth = balance.sub(ethTransferFee);
+    let allowedEth = maxBigNumber(balance.sub(ethTransferFee), BigNumber.from(0));
     amount = minBigNumber(amount, allowedEth);
 
     if (isOperationFeeAcceptable(amount, ethTransferFee, MAX_LIQUIDATION_FEE_PERCENT)) {
@@ -171,7 +171,9 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         });
     } else {
         console.log(
-            `Skipping transfer because fee/amount ratio is too high: fee ${ethTransferFee.toString()}, amount ${amount.toString()}`
+            `Skipping transfer because fee/amount ratio is too high: fee ${ethers.utils.formatEther(
+                ethTransferFee
+            )}, amount ${ethers.utils.formatEther(amount)}`
         );
     }
 }
@@ -179,8 +181,12 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 (async () => {
     const ethProvider = new ethers.providers.JsonRpcProvider(L1_WEB3_API_URL);
     const zksyncProvider = new zkweb3.Provider(ZKSYNC_WEB3_API_URL);
+    console.log('Providers are initialized');
+
     const wallet = new zkweb3.Wallet(FEE_ACCOUNT_PRIVATE_KEY, zksyncProvider, ethProvider);
     const ethWallet = new ethers.Wallet(FEE_ACCOUNT_PRIVATE_KEY, ethProvider);
+    console.log('Wallets are initialized');
+
     try {
         const isMainnet = (await ethProvider.getNetwork()).chainId == 1;
         if (TESTNET_PAYMASTER_ADDRESS && isMainnet) {
@@ -302,7 +308,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
         console.log(`----------------------------------------------------------------------------`);
 
-        transferAmount = l1feeAccountBalance.sub(L1_ETH_TRANSFER_THRESHOLD);
+        transferAmount = maxBigNumber(l1feeAccountBalance.sub(L1_ETH_TRANSFER_THRESHOLD), BigNumber.from(0));
         console.log(
             `Amount which fee account can send to reserve accumulator: ${ethers.utils.formatEther(transferAmount)} ETH;
             fee account l1 balance in this case will be ${ethers.utils.formatEther(L1_ETH_TRANSFER_THRESHOLD)} ETH`
