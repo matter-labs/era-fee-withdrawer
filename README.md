@@ -1,30 +1,33 @@
-# Fee withdrawer
+# SGX era-fee-withdrawer
 
-This repository contains the fee withdrawer script: a utility that is capable of withdrawing funds
-from zkSync fee account in L2 to L1, and transferring funds to the
-zkSync operator account, withdrawal finalizer account and reserve account.
+This is a reproducible build of https://github.com/matter-labs/era-fee-withdrawer
+with the gramine runtime to be run on SGX in Azure.
 
-## Utility lifecycle
+## Reproduce the NixOS build
+```bash
+$ docker run --privileged -it -v .:/mnt nixos/nix:2.18.1
+```
+Inside the container:
+```bash
+$ echo 'experimental-features = nix-command flakes' >> /etc/nix/nix.conf
+$ echo 'sandbox = true' >> /etc/nix/nix.conf
+$ cd /mnt
+$ nix build -L .#docker-era-fee-withdrawer-azure
+$ cp result era-fee-withdrawer-azure.tar.gz
+$ exit
+```
+## Build the Docker image
+```bash
+$ docker load < era-fee-withdrawer-azure.tar.gz
+$ docker build --no-cache --progress=plain -t efw -f Dockerfile .
+```
 
-Fee seller is expected to be run periodically, and upon each launch it sequentially does the following:
+Should output something like:
+```bash
+[...]
 
-1. Check whether withdrawing ETH is reasonable. If so, withdraw funds to L1 account.
-2. Check the L1 ETH balance on the fee account. If it's above configurable threshold, divide the amount between 3 accounts:
-  - If zkSync operator account balance is lower than the threshold, send necessary amount to zkSync operator account.
-  - If zkSync withdrawal finalizer account balance is lower than the threshold, send necessary amount to zkSync withdrawal finalizer account.
-  - Otherwise, send to reserve account.
-  
-This way, script achieves the following goal:
-we don't maintain all the funds on a single hot wallet (operator account). We keep the operator and withdrawer balances big
-enough to work on its own for several days (e.g. 15 ETH), but all the excessive funds are transferred to
-the cold wallet (reserve account).
-
-## Configuration parameters
-
-Configuration parameters should be set as environment variables.
-See `index.ts` for details.
-
-## Notifications
-
-Notifications about operations performed by fee withdrawer are sent to mattermost (currently, to the `Notifications`
-channel).
+#9 6.572 Measurement:
+#9 6.572     e3ea485757ad903e9a9a71c7363bf56d4cf47db1ccec549f5e98d917b0f34b27
+[...]
+```
+as the github actions build does.
