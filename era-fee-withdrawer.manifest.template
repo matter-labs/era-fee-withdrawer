@@ -1,0 +1,68 @@
+libos.entrypoint = "/usr/local/bin/node"
+
+[loader]
+entrypoint = "file:{{ gramine.libos }}"
+argv = [ "node", "./node_modules/ts-node/dist/bin.js", "src/index.ts" ]
+env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}:/usr{{ arch_libdir }}"
+env.PATH = "{{ execdir }}"
+env.MISC_FEE_ACCOUNT_PRIVATE_KEY = { passthrough = true }
+env.CHAIN_STATE_KEEPER_FEE_ACCOUNT_ADDR = { passthrough = true }
+env.WITHDRAWAL_FINALIZER_ETH_ADDRESS = { passthrough = true }
+env.MISC_RESERVE_FEE_ACCUMULATOR_ADDRESS = { passthrough = true }
+env.L1_WEB3_API_URL = { passthrough = true }
+env.ZKSYNC_WEB3_API_URL = { passthrough = true }
+env.MISC_MAX_LIQUIDATION_FEE_PERCENT = { passthrough = true }
+env.LOWER_BOUND_OPERATOR_THRESHOLD = { passthrough = true }
+env.UPPER_BOUND_OPERATOR_THRESHOLD = { passthrough = true }
+env.LOWER_BOUND_WITHDRAWER_THRESHOLD = { passthrough = true }
+env.UPPER_BOUND_WITHDRAWER_THRESHOLD = { passthrough = true }
+env.NOTIFICATION_WEBHOOK_URL = { passthrough = true }
+# optional env
+env.L1_ETH_TRANSFER_THRESHOLD = { passthrough = true }
+env.L2_ETH_TRANSFER_THRESHOLD = { passthrough = true }
+
+# set a log level for gramine
+log_level = "{{ log_level }}"
+
+[fs]
+root.uri = "file:/"
+start_dir = "/app"
+mounts = [
+  { path = "{{ execdir }}", uri = "file:{{ execdir }}" },
+  { path = "/lib", uri = "file:{{ gramine.runtimedir() }}" },
+  { path = "{{ arch_libdir }}", uri = "file:{{ arch_libdir }}" },
+  { type = "tmpfs", path = "/var/tmp" },
+  { type = "tmpfs", path = "/tmp" },
+  { type = "tmpfs", path = "/app/.dcap-qcnl" },
+  { type = "tmpfs", path = "/app/.az-dcap-client" },
+]
+
+[sgx]
+debug = false
+edmm_enable = false
+enclave_size = "8G"
+max_threads = 64
+remote_attestation = "dcap"
+
+trusted_files = [
+  "file:/bin/bash",
+  "file:{{ gramine.libos }}",
+  "file:{{ execdir }}/",
+  "file:{{ gramine.runtimedir() }}/",
+  "file:{{ arch_libdir }}/",
+  "file:/usr/{{ arch_libdir }}/",
+  "file:/usr/lib/ssl/openssl.cnf",
+  "file:/usr/local/",
+  "file:/etc/ssl/",
+  "file:/app/",
+]
+
+#file_check_policy = "allow_all_but_log"
+
+[sys]
+stack.size = "1M"
+enable_extra_runtime_domain_names_conf = true
+enable_sigterm_injection = true
+
+experimental__enable_flock = true
+insecure__allow_eventfd = true
