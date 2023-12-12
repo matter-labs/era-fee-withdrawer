@@ -41,7 +41,7 @@ jobs:
         run: |
           sha=$(git rev-parse --short HEAD)
           ts=$(date +%s%N | cut -b1-13)
-          echo "name=BUILD_ID::${sha}-${ts}" >> "$GITHUB_OUTPUT"
+          echo "BUILD_ID=${sha}-${ts}" >> "$GITHUB_OUTPUT"
 
       - name: Auth to google artifact registry
         run: |
