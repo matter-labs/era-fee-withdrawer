@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - "gramine*"
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Target branch to build fee-withdrawer-v2-tee image against"
+        type: string
+        required: true
 
 jobs:
   push_to_registry:
@@ -12,7 +18,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        with:
+          ref: ${{ github.event.inputs.target_branch }}
 
+      - uses: actions/checkout@v4
+        if: ${{ github.event_name != 'workflow_dispatch' }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-qemu-action@v3
