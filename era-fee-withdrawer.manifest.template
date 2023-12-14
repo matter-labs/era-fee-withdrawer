@@ -6,20 +6,25 @@ argv = [ "node", "./node_modules/ts-node/dist/bin.js", "src/index.ts" ]
 env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}:/usr{{ arch_libdir }}"
 env.PATH = "{{ execdir }}"
 env.MISC_FEE_ACCOUNT_PRIVATE_KEY = { passthrough = true }
-env.CHAIN_STATE_KEEPER_FEE_ACCOUNT_ADDR = { passthrough = true }
+env.OPERATOR_ADDRESS = { passthrough = true }
 env.WITHDRAWAL_FINALIZER_ETH_ADDRESS = { passthrough = true }
 env.MISC_RESERVE_FEE_ACCUMULATOR_ADDRESS = { passthrough = true }
-env.L1_WEB3_API_URL = { passthrough = true }
+env.L1_RPC_ADDRESS = { passthrough = true }
 env.ZKSYNC_WEB3_API_URL = { passthrough = true }
 env.MISC_MAX_LIQUIDATION_FEE_PERCENT = { passthrough = true }
 env.LOWER_BOUND_OPERATOR_THRESHOLD = { passthrough = true }
 env.UPPER_BOUND_OPERATOR_THRESHOLD = { passthrough = true }
 env.LOWER_BOUND_WITHDRAWER_THRESHOLD = { passthrough = true }
 env.UPPER_BOUND_WITHDRAWER_THRESHOLD = { passthrough = true }
-env.NOTIFICATION_WEBHOOK_URL = { passthrough = true }
+env.LOWER_BOUND_PAYMASTER_THRESHOLD = { passthrough = true }
+env.UPPER_BOUND_PAYMASTER_THRESHOLD = { passthrough = true }
 # optional env
+env.WATCHDOG_ADDRESS = { passthrough = true }
+env.LOWER_BOUND_WATCHDOG_THRESHOLD = { passthrough = true }
+env.UPPER_BOUND_WATCHDOG_THRESHOLD = { passthrough = true }
 env.L1_ETH_TRANSFER_THRESHOLD = { passthrough = true }
 env.L2_ETH_TRANSFER_THRESHOLD = { passthrough = true }
+env.CONTRACTS_L2_TESTNET_PAYMASTER_ADDR = { passthrough = true }
 
 # set a log level for gramine
 log_level = "{{ log_level }}"
