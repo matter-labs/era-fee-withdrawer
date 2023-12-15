@@ -81,7 +81,7 @@ RUN yarn --no-bin-links install && rm -fr /usr/local/share/.cache/yarn /tmp/*
 RUN mkdir .dcap-qcnl .az-dcap-client
 
 RUN set -eux; \
-    gramine-manifest -Darch_libdir=/lib/x86_64-linux-gnu -Dexecdir=/usr/bin -Dlog_level=warning era-fee-withdrawer.manifest.template era-fee-withdrawer.manifest; \
+    gramine-manifest -Darch_libdir=/lib/x86_64-linux-gnu -Dexecdir=/usr/bin -Dlog_level=warning era-fee-withdrawer.manifest.toml era-fee-withdrawer.manifest; \
     gramine-sgx-sign --manifest era-fee-withdrawer.manifest --output era-fee-withdrawer.manifest.sgx --key enclave-key.pem; \
     rm enclave-key.pem
 
