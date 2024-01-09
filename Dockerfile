@@ -86,5 +86,4 @@ RUN set -eux; \
     rm enclave-key.pem
 
 ENTRYPOINT ["/bin/sh", "-c"]
-# CMD [ "./restart_aesm.sh ; exec gramine-sgx era-fee-withdrawer" ]
-CMD [ "exec gramine-direct era-fee-withdrawer" ]
+CMD [ "./restart_aesm.sh ; exec gramine-sgx era-fee-withdrawer" ]
