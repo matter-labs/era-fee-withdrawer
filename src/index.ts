@@ -11,6 +11,7 @@ const FEE_ACCOUNT_PRIVATE_KEY = process.env.MISC_FEE_ACCOUNT_PRIVATE_KEY;
 
 /** Addresses of accounts to distribute ETH among */
 const OPERATOR_ADDRESS = process.env.OPERATOR_ADDRESS;
+const BLOB_OPERATOR_ADDRESS = process.env.BLOB_OPERATOR_ADDRESS;
 const WITHDRAWAL_FINALIZER_ETH_ADDRESS = process.env.WITHDRAWAL_FINALIZER_ETH_ADDRESS;
 const RESERVE_FEE_ACCUMULATOR_ADDRESS = process.env.MISC_RESERVE_FEE_ACCUMULATOR_ADDRESS;
 const TESTNET_PAYMASTER_ADDRESS = process.env.CONTRACTS_L2_TESTNET_PAYMASTER_ADDR;
@@ -34,6 +35,9 @@ const UPPER_BOUND_PAYMASTER_THRESHOLD = ethers.utils.parseEther(process.env.UPPE
 
 const LOWER_BOUND_WATCHDOG_THRESHOLD = ethers.utils.parseEther(process.env.LOWER_BOUND_WATCHDOG_THRESHOLD);
 const UPPER_BOUND_WATCHDOG_THRESHOLD = ethers.utils.parseEther(process.env.UPPER_BOUND_WATCHDOG_THRESHOLD);
+
+const LOWER_BOUND_BLOB_OPERATOR_THRESHOLD = ethers.utils.parseEther(process.env.LOWER_BOUND_BLOB_OPERATOR_THRESHOLD);
+const UPPER_BOUND_BLOB_OPERATOR_THRESHOLD = ethers.utils.parseEther(process.env.UPPER_BOUND_BLOB_OPERATOR_THRESHOLD);
 
 const L1_ETH_TRANSFER_THRESHOLD = process.env.L1_ETH_TRANSFER_THRESHOLD
     ? ethers.utils.parseEther(process.env.L1_ETH_TRANSFER_THRESHOLD)
@@ -203,6 +207,9 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
         const operatorBalance = await ethProvider.getBalance(OPERATOR_ADDRESS);
         console.log(`Operator L1 balance before top-up: ${ethers.utils.formatEther(operatorBalance)}`);
+        
+        const blobOperatorBalance = await ethProvider.getBalance(BLOB_OPERATOR_ADDRESS);
+        console.log(`Blob Operator L1 balance before top-up: ${ethers.utils.formatEther(blobOperatorBalance)}`);
 
         const withdrawerBalance = await ethProvider.getBalance(WITHDRAWAL_FINALIZER_ETH_ADDRESS);
         console.log(`Withdrawer L1 balance before top-up: ${ethers.utils.formatEther(withdrawerBalance)}`);
@@ -293,6 +300,23 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
         [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
             l1feeAccountBalance,
+            blobOperatorBalance,
+            UPPER_BOUND_BLOB_OPERATOR_THRESHOLD,
+            LOWER_BOUND_BLOB_OPERATOR_THRESHOLD,
+            L1_ETH_TRANSFER_THRESHOLD
+        );
+        console.log(
+            `Amount which fee account can send to blob operator: ${ethers.utils.formatEther(transferAmount)} ETH;
+            fee account l1 balance in this case will be ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`
+        );
+
+        console.log('Step 5 - send ETH to blob operator');
+        await sendETH(ethWallet, BLOB_OPERATOR_ADDRESS, transferAmount);
+
+        console.log(`----------------------------------------------------------------------------`);
+
+        [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
+            l1feeAccountBalance,
             withdrawerBalance,
             UPPER_BOUND_WITHDRAWER_THRESHOLD,
             LOWER_BOUND_WITHDRAWER_THRESHOLD,
@@ -303,7 +327,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             fee account l1 balance in this case will be ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`
         );
 
-        console.log('Step 5 - send ETH to withdrawal finalizer');
+        console.log('Step 6 - send ETH to withdrawal finalizer');
         await sendETH(ethWallet, WITHDRAWAL_FINALIZER_ETH_ADDRESS, transferAmount);
 
         console.log(`----------------------------------------------------------------------------`);
@@ -313,7 +337,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             `Amount which fee account can send to reserve accumulator: ${ethers.utils.formatEther(transferAmount)} ETH;
             fee account l1 balance in this case will be ${ethers.utils.formatEther(L1_ETH_TRANSFER_THRESHOLD)} ETH`
         );
-        console.log('Step 6 - send ETH to reserve address');
+        console.log('Step 7 - send ETH to reserve address');
         await sendETH(ethWallet, RESERVE_FEE_ACCUMULATOR_ADDRESS, transferAmount);
     } catch (e) {
         console.error('Failed to proceed with fee withdrawal: ', e);
