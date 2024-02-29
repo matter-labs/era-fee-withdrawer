@@ -9,6 +9,9 @@ import { calculateTransferAmount } from './transfer-calculator';
 /** L2 fee account PK */
 const FEE_ACCOUNT_PRIVATE_KEY = process.env.MISC_FEE_ACCOUNT_PRIVATE_KEY;
 
+/** L1 fee distributor PK */
+const L1_FEE_DISTRIBUTOR_PRIVATE_KEY = process.env.MISC_L1_FEE_DISTRIBUTOR_PRIVATE_KEY;
+
 /** Addresses of accounts to distribute ETH among */
 const OPERATOR_ADDRESS = process.env.OPERATOR_ADDRESS;
 const BLOB_OPERATOR_ADDRESS = process.env.BLOB_OPERATOR_ADDRESS;
@@ -188,7 +191,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
     console.log('Providers are initialized');
 
     const wallet = new zkweb3.Wallet(FEE_ACCOUNT_PRIVATE_KEY, zksyncProvider, ethProvider);
-    const ethWallet = new ethers.Wallet(FEE_ACCOUNT_PRIVATE_KEY, ethProvider);
+    const ethWallet = !L1_FEE_DISTRIBUTOR_PRIVATE_KEY ? new ethers.Wallet(FEE_ACCOUNT_PRIVATE_KEY, ethProvider) : new ethers.Wallet(L1_FEE_DISTRIBUTOR_PRIVATE_KEY, ethProvider);
     console.log('Wallets are initialized');
 
     try {
@@ -199,7 +202,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
         console.log(`----------------------------------------------------------------------------`);
         // get initial balances
-        let l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
+        let l1feeAccountBalance = await ethProvider.getBalance(ethWallet.address);
         console.log(`Fee account L1 balance before top-up: ${ethers.utils.formatEther(l1feeAccountBalance)}`);
 
         let l2feeAccountBalance = await zksyncProvider.getBalance(wallet.address);
@@ -275,7 +278,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         l2feeAccountBalance = await wallet.getBalance(wallet.address);
         console.log(`L2 fee account balance after withdraw: ${ethers.utils.formatEther(l2feeAccountBalance)} ETH`);
 
-        l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
+        l1feeAccountBalance = await ethProvider.getBalance(ethWallet.address);
         console.log(`L1 fee account balance after withdraw: ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`);
 
         console.log(`----------------------------------------------------------------------------`);
