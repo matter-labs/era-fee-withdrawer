@@ -50,7 +50,7 @@ const L2_ETH_TRANSFER_THRESHOLD = process.env.L2_ETH_TRANSFER_THRESHOLD
     ? ethers.utils.parseEther(process.env.L2_ETH_TRANSFER_THRESHOLD)
     : ethers.utils.parseEther('1.0');
 
-async function withdrawForL1TopUps(wallet: zkweb3.Wallet) {
+async function withdrawForL1TopUps(wallet: zkweb3.Wallet, ethWallet: ethers.Wallet) {
     // There should be reserve of `L2_ETH_TRANSFER_THRESHOLD` amount on L2
     let balance = await wallet.getBalance(zkweb3.utils.ETH_ADDRESS);
     let amount = balance.sub(L2_ETH_TRANSFER_THRESHOLD);
@@ -68,7 +68,7 @@ async function withdrawForL1TopUps(wallet: zkweb3.Wallet) {
         token: zkweb3.utils.ETH_ADDRESS,
         amount,
         from: wallet.address,
-        to: wallet.address
+        to: ethWallet.address
     });
     const gasLimit = await wallet.provider.estimateGas(tx);
     const gasPrice = await wallet.provider.getGasPrice();
@@ -79,7 +79,7 @@ async function withdrawForL1TopUps(wallet: zkweb3.Wallet) {
         const withdrawHandle = await wallet.withdraw({
             token: zkweb3.utils.ETH_ADDRESS,
             amount,
-            to: wallet.address,
+            to: ethWallet.address,
             overrides: {
                 gasPrice,
                 gasLimit
@@ -273,7 +273,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         console.log(`----------------------------------------------------------------------------`);
 
         console.log('Step 3 - withdrawing tokens from ZkSync');
-        await withdrawForL1TopUps(wallet);
+        await withdrawForL1TopUps(wallet, ethWallet);
 
         l2feeAccountBalance = await wallet.getBalance(wallet.address);
         console.log(`L2 fee account balance after withdraw: ${ethers.utils.formatEther(l2feeAccountBalance)} ETH`);
