@@ -300,23 +300,6 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
         [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
             l1feeAccountBalance,
-            blobOperatorBalance,
-            UPPER_BOUND_BLOB_OPERATOR_THRESHOLD,
-            LOWER_BOUND_BLOB_OPERATOR_THRESHOLD,
-            L1_ETH_TRANSFER_THRESHOLD
-        );
-        console.log(
-            `Amount which fee account can send to blob operator: ${ethers.utils.formatEther(transferAmount)} ETH;
-            fee account l1 balance in this case will be ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`
-        );
-
-        console.log('Step 5 - send ETH to blob operator');
-        await sendETH(ethWallet, BLOB_OPERATOR_ADDRESS, transferAmount);
-
-        console.log(`----------------------------------------------------------------------------`);
-
-        [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
-            l1feeAccountBalance,
             withdrawerBalance,
             UPPER_BOUND_WITHDRAWER_THRESHOLD,
             LOWER_BOUND_WITHDRAWER_THRESHOLD,
@@ -327,8 +310,26 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             fee account l1 balance in this case will be ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`
         );
 
-        console.log('Step 6 - send ETH to withdrawal finalizer');
+        console.log('Step 5 - send ETH to withdrawal finalizer');
         await sendETH(ethWallet, WITHDRAWAL_FINALIZER_ETH_ADDRESS, transferAmount);
+
+        console.log(`----------------------------------------------------------------------------`);
+
+
+        [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
+            l1feeAccountBalance,
+            blobOperatorBalance,
+            UPPER_BOUND_BLOB_OPERATOR_THRESHOLD,
+            LOWER_BOUND_BLOB_OPERATOR_THRESHOLD,
+            L1_ETH_TRANSFER_THRESHOLD
+        );
+        console.log(
+            `Amount which fee account can send to blob operator: ${ethers.utils.formatEther(transferAmount)} ETH;
+            fee account l1 balance in this case will be ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`
+        );
+
+        console.log('Step 6 - send ETH to blob operator');
+        await sendETH(ethWallet, BLOB_OPERATOR_ADDRESS, transferAmount);
 
         console.log(`----------------------------------------------------------------------------`);
 
