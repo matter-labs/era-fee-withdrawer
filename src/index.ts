@@ -298,7 +298,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
         console.log(`----------------------------------------------------------------------------`);
 
-	[transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
+        [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
             l1feeAccountBalance,
             withdrawerBalance,
             UPPER_BOUND_WITHDRAWER_THRESHOLD,
