@@ -12,22 +12,25 @@ Inside the container:
 $ echo 'experimental-features = nix-command flakes' >> /etc/nix/nix.conf
 $ echo 'sandbox = true' >> /etc/nix/nix.conf
 $ cd /mnt
-$ nix build -L .#docker-era-fee-withdrawer-azure
+$ nix build -L .#container-era-fee-withdrawer-azure
 $ cp result era-fee-withdrawer-azure.tar.gz
 $ exit
 ```
-## Build the Docker image
+## Load the Docker image
 ```bash
 $ docker load < era-fee-withdrawer-azure.tar.gz
-$ docker build --no-cache --progress=plain -t efw -f Dockerfile .
+$ docker run -v $(pwd):/mnt -i --init --rm era-fee-withdrawer-azure:latest "cp era-fee-withdrawer-azure.sig /mnt"
+$ gramine-sgx-sigstruct-view era-fee-withdrawer-azure.sig
 ```
 
 Should output something like:
 ```bash
-[...]
-
-#9 6.572 Measurement:
-#9 6.572     e3ea485757ad903e9a9a71c7363bf56d4cf47db1ccec549f5e98d917b0f34b27
-[...]
+Attributes:
+    mr_signer: c5591a72b8b86e0d8814d6e8750e3efe66aea2d102b8ba2405365559b858697d
+    mr_enclave: f496995ebf3428638858c315d6194e5578df0ed0cefbcaf67b24d5d9322965bc
+    isv_prod_id: 0
+    isv_svn: 0
+    debug_enclave: False
 ```
-as the github actions build does.
+
+with the same `mr_enclave` as the github actions build does.
