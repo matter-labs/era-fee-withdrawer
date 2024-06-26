@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - "gramine*"
+    tags:
+      - "*-sgx"
   workflow_dispatch:
     inputs:
       target_branch:
@@ -71,10 +73,17 @@ jobs:
 
       - name: Generate build ID for Flux Image Automation
         id: flux
+        if: ${{ !startsWith(github.ref, 'refs/tags') }}
         run: |
           sha=$(git rev-parse --short HEAD)
           ts=$(date +%s%N | cut -b1-13)
           echo "BUILD_ID=${sha}-${ts}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate build ID for Flux Image Automation
+        id: tag
+        if: ${{ startsWith(github.ref, 'refs/tags') }}
+        run: |
+          echo "BUILD_ID=${GITHUB_REF#refs/*/}" >> "$GITHUB_OUTPUT"
 
       - name: Auth to google artifact registry
         run: |
@@ -87,3 +96,11 @@ jobs:
           docker push "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:latest"
           docker tag "${{ steps.build.outputs.IMAGE_TAG }}" "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:${{ steps.flux.outputs.BUILD_ID }}"
           docker push "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:${{ steps.flux.outputs.BUILD_ID }}"
+
+      - name: Push Docker image to matterlabs-infra
+        if: ${{ startsWith(github.ref, 'refs/tags') }}
+        run: |
+          docker tag "${{ steps.build.outputs.IMAGE_TAG }}" "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:latest"
+          docker push "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:latest"
+          docker tag "${{ steps.build.outputs.IMAGE_TAG }}" "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:${{ steps.tag.outputs.BUILD_ID }}"
+          docker push "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:${{ steps.tag.outputs.BUILD_ID }}"
