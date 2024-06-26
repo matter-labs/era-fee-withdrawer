@@ -83,7 +83,7 @@ jobs:
       - name: Push Docker image to matterlabs-infra
         if: ${{ !startsWith(github.ref, 'refs/tags') }}
         run: |
-          docker tag "${{ steps.build.outputs.IMAGE_TAG}}" "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:latest"
+          docker tag "${{ steps.build.outputs.IMAGE_TAG }}" "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:latest"
           docker push "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:latest"
-          docker tag "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:latest" "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:${{ steps.flux.outputs.BUILD_ID }}"
+          docker tag "${{ steps.build.outputs.IMAGE_TAG }}" "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:${{ steps.flux.outputs.BUILD_ID }}"
           docker push "us-docker.pkg.dev/matterlabs-infra/matterlabs-docker/fee-withdrawer-v2-tee:${{ steps.flux.outputs.BUILD_ID }}"

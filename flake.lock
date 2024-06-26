@@ -93,11 +93,11 @@
         "snowfall-lib": "snowfall-lib"
       },
       "locked": {
-        "lastModified": 1717758565,
-        "narHash": "sha256-yscuZ3ixjwTkqS6ew5cB3Uvy9e807szRlMoPSyQuRJM=",
+        "lastModified": 1718961396,
+        "narHash": "sha256-RAyAHji/WLd7W/rMlDSC9XO5VREVFRuVo/LK0a9QIEI=",
         "owner": "matter-labs",
         "repo": "nixsgx",
-        "rev": "49a1ae79d92ccb6ed7cabfe5c5042b1399e3cd3e",
+        "rev": "f6c55e4229be64e146679c2f77e48ba8351ba77b",
         "type": "github"
       },
       "original": {

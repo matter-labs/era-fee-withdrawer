@@ -1,6 +1,11 @@
 {
   description = "era-fee-withdrawer";
 
+  nixConfig = {
+    extra-substituters = ["https://nixsgx.cachix.org"];
+    extra-trusted-public-keys = ["nixsgx.cachix.org-1:tGi36DlY2joNsIXOlGnSgWW0+E094V6hW0umQRo/KoE="];
+  };
+
   inputs = {
     nixsgx-flake.url = "github:matter-labs/nixsgx";
     nixpkgs.follows = "nixsgx-flake/nixpkgs";
