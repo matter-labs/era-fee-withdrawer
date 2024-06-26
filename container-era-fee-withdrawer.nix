@@ -14,6 +14,8 @@ pkgs.callPackage nixsgx-flake.lib.mkSGXContainer {
   packages = [ efw.era-fee-withdrawer ];
   entrypoint = "${efw.era-fee-withdrawer}/bin/era-fee-withdrawer";
 
+  extraCmd = "echo Starting era-fee-withdrawer; gramine-sgx-sigstruct-view app.sig";
+
   isAzure = true;
 
   manifest = {
