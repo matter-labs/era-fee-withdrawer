@@ -5,7 +5,7 @@ on:
     branches:
       - "gramine*"
     tags:
-      - "*-sgx.*"
+      - "*-sgx-*"
   workflow_dispatch:
     inputs:
       target_branch:
