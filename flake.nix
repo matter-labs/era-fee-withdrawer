@@ -2,8 +2,8 @@
   description = "era-fee-withdrawer";
 
   nixConfig = {
-    extra-substituters = ["https://nixsgx.cachix.org"];
-    extra-trusted-public-keys = ["nixsgx.cachix.org-1:tGi36DlY2joNsIXOlGnSgWW0+E094V6hW0umQRo/KoE="];
+    extra-substituters = ["https://attic.teepot.org/tee-pot"];
+    extra-trusted-public-keys = ["tee-pot:SS6HcrpG87S1M6HZGPsfo7d1xJccCGev7/tXc5+I4jg="];
   };
 
   inputs = {
