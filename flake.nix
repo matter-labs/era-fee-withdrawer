@@ -37,8 +37,8 @@
                 };
               };
 
-          container-era-fee-withdrawer-azure = pkgs.callPackage ./container-era-fee-withdrawer.nix { inherit nixsgx-flake; isAzure = true; };
-          container-era-fee-withdrawer-dcap = pkgs.callPackage ./container-era-fee-withdrawer.nix { inherit nixsgx-flake; isAzure = false; };
+          container-era-fee-withdrawer-azure = pkgs.callPackage ./container-era-fee-withdrawer.nix { isAzure = true; };
+          container-era-fee-withdrawer-dcap = pkgs.callPackage ./container-era-fee-withdrawer.nix { isAzure = false; };
         in
         {
           formatter = pkgs.nixpkgs-fmt;

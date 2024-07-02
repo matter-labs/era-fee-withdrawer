@@ -1,5 +1,5 @@
 { pkgs
-, nixsgx-flake
+, nixsgxLib
 , efw
 , tag ? "latest"
 , isAzure ? true
@@ -7,7 +7,7 @@
 let
   name = if isAzure then "era-fee-withdrawer-azure" else "era-fee-withdrawer-dcap";
 in
-pkgs.callPackage nixsgx-flake.lib.mkSGXContainer {
+nixsgxLib.mkSGXContainer {
   inherit name;
   inherit tag;
 
