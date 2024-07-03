@@ -38,6 +38,7 @@ nixsgxLib.mkSGXContainer {
         UPPER_BOUND_PAYMASTER_THRESHOLD.passthrough = true;
         LOWER_BOUND_BLOB_OPERATOR_THRESHOLD.passthrough = true;
         UPPER_BOUND_BLOB_OPERATOR_THRESHOLD.passthrough = true;
+        BLOB_OPERATOR_ADDRESS.passthrough = true;
         # optional env
         WATCHDOG_ADDRESS.passthrough = true;
         LOWER_BOUND_WATCHDOG_THRESHOLD.passthrough = true;
