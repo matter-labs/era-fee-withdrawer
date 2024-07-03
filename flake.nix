@@ -28,12 +28,12 @@
               ./era-fee-withdrawer.nix
               {
                 pname = "era-fee-withdrawer";
-                version = "2.2.33";
+                version = "2.2.36";
                 src = pkgs.fetchFromGitHub {
                   owner = "matter-labs";
                   repo = "era-fee-withdrawer";
-                  rev = "v2.2.33";
-                  hash = "sha256-vyNldcUErQ/aD/Oprbs0OocTv0ARQ0/WG05WrN13IO8=";
+                  rev = "v2.2.36";
+                  hash = "sha256-lgXOmtK4DKQbIJMLRLuOQOK0RgDA+L3gLua27nsGkAU=";
                 };
               };
 
