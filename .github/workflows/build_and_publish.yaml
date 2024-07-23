@@ -10,7 +10,7 @@ on:
 jobs:
   push_to_registry:
     name: Push Docker image to Docker Hub
-    runs-on: [matterlabs-ci-runner]
+    runs-on: [ matterlabs-default-infra-runners ]
 
     steps:
       - uses: actions/checkout@v2
