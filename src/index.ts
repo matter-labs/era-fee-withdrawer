@@ -1,8 +1,10 @@
 import * as ethers from 'ethers';
-import * as zkweb3 from 'zksync-web3';
+import * as zkweb3 from 'zksync-ethers';
 import { BigNumber } from 'ethers';
 import { isOperationFeeAcceptable, minBigNumber, maxBigNumber } from './utils';
 import { calculateTransferAmount } from './transfer-calculator';
+import { IERC20 } from 'zksync-ethers/build/utils';
+import { Address } from 'zksync-ethers/build/types';
 
 /** Env parameters */
 
@@ -47,25 +49,73 @@ const L2_ETH_TRANSFER_THRESHOLD = process.env.L2_ETH_TRANSFER_THRESHOLD
     ? ethers.utils.parseEther(process.env.L2_ETH_TRANSFER_THRESHOLD)
     : ethers.utils.parseEther('1.0');
 
-async function withdrawForL1TopUps(wallet: zkweb3.Wallet) {
+interface BaseTokenInfo {
+    isEthBased: boolean
+    BT_ADDRESS: Address;
+    BT_SYMBOL: string;
+    BT_DECIMALS_MUL?: number;
+    ERC20_CONTRACT_L1?: ethers.Contract;
+}
+
+
+async function setupBaseToken(ethersWallet: ethers.Wallet, zkWallet: zkweb3.Wallet) {
+    const isEthBased = await zkWallet.provider.isEthBasedChain();
+    if (!isEthBased) {
+        // Is assumed the BaseToken has 18 as Decimals
+        const BT_ADDRESS = await zkWallet.provider.getBaseTokenContractAddress();
+        const ERC20_CONTRACT_L1 = new ethers.Contract(BT_ADDRESS, IERC20, ethersWallet.provider);
+        const BT_SYMBOL = await ERC20_CONTRACT_L1.symbol();
+        return {
+            isEthBased,
+            BT_ADDRESS,
+            BT_SYMBOL,
+            ERC20_CONTRACT_L1
+        };
+    } else {
+        return {
+            isEthBased,
+            BT_ADDRESS: zkweb3.utils.ETH_ADDRESS,
+            BT_SYMBOL: "ETH"
+        };
+    }
+}
+
+const getERC20Balance = async (address: string, baseToken: BaseTokenInfo) => {
+    if (!baseToken.isEthBased) {
+        await baseToken.ERC20_CONTRACT_L1.balanceOf(address)
+            .then((balance: number) => {
+                console.log(`L1 BaseToken Balance: ${ethers.utils.formatEther(balance)} ${baseToken.BT_SYMBOL}`);
+            })
+            .catch(() => {
+                console.error("Error fetching ERC20 balance from L1");
+            });
+    }
+}
+
+async function withdrawForL1TopUps(wallet: zkweb3.Wallet, baseToken: BaseTokenInfo) {
     // There should be reserve of `L2_ETH_TRANSFER_THRESHOLD` amount on L2
-    let balance = await wallet.getBalance(zkweb3.utils.ETH_ADDRESS);
+    // wallet.getBalance(); -> Gets Base_Token Balance 0x800A
+    let balance = await wallet.getBalance();
     let amount = balance.sub(L2_ETH_TRANSFER_THRESHOLD);
     if (amount.lte(0)) {
         console.log(
             `Withdrawal can not be done: main wallet balance is less than l2 ETH transfer threshold;\n
-            main wallet balance: ${balance};\n
-            threshold: ${L2_ETH_TRANSFER_THRESHOLD}
+            main wallet balance: ${ethers.utils.formatEther(balance)};\n
+            threshold: ${ethers.utils.formatEther(L2_ETH_TRANSFER_THRESHOLD)}
             `
         );
         return;
     }
+    console.log(`balance: ${ethers.utils.formatEther(balance)}`);
+    console.log(`amount: ${ethers.utils.formatEther(amount)}`);
+    const bridge = (await wallet.provider.getDefaultBridgeAddresses()).sharedL1;
     // Estimate withdrawal fee.
     const tx = await wallet.provider.getWithdrawTx({
-        token: zkweb3.utils.ETH_ADDRESS,
+        token: baseToken.BT_ADDRESS,
         amount,
         from: wallet.address,
-        to: wallet.address
+        to: wallet.address,
+        bridgeAddress: bridge
     });
     const gasLimit = await wallet.provider.estimateGas(tx);
     const gasPrice = await wallet.provider.getGasPrice();
@@ -74,30 +124,43 @@ async function withdrawForL1TopUps(wallet: zkweb3.Wallet) {
         amount = amount.sub(fee);
         // Send withdrawal tx.
         const withdrawHandle = await wallet.withdraw({
-            token: zkweb3.utils.ETH_ADDRESS,
+            token: baseToken.BT_ADDRESS,
             amount,
             to: wallet.address,
             overrides: {
                 gasPrice,
                 gasLimit
-            }
+            },
+            bridgeAddress: bridge
         });
         const hash = withdrawHandle.hash;
         console.log(
-            `Withdrawing ETH, amount: ${ethers.utils.formatEther(amount)}, fee: ${ethers.utils.formatEther(fee)}, tx hash: ${hash}`
+            `Withdrawing ${baseToken.BT_SYMBOL}, amount: ${ethers.utils.formatEther(amount)}, fee: ${ethers.utils.formatEther(fee)}, tx hash: ${hash}`
         );
 
         await withdrawHandle.wait();
-        console.log(`Withdrawal L2 tx has succeeded, tx hash: ${hash}`);
+        console.log(`Withdrawal L2 tx has succeeded here, tx hash: ${hash}`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        const signer = new zkweb3.L1VoidSigner(
+            zkweb3.utils.L2_BASE_TOKEN_ADDRESS,
+            wallet.providerL1,
+            wallet.provider,
+        ) as unknown as zkweb3.L1Signer;
+
+
+        console.log(`isWithdrawalFinalized: ${await signer.finalizeWithdrawal(hash)}`);
+        await signer.finalizeWithdrawalParams(hash);
+        console.log(`Withdrawal Suceeded`);
     } else {
         console.log('Skipping withdrawing, fee slippage is too big');
     }
 }
 
-async function L2topUp(wallet: zkweb3.Wallet, amount: BigNumber, l2AccountAddress: string, l2AccountName: string) {
+async function L2topUp(wallet: zkweb3.Wallet, amount: BigNumber, l2AccountAddress: string, l2AccountName: string, baseToken: BaseTokenInfo) {
     // Estimate withdrawal fee.
     const tx = await wallet.provider.getTransferTx({
-        token: zkweb3.utils.ETH_ADDRESS,
+        token: zkweb3.utils.L2_BASE_TOKEN_ADDRESS,
         amount,
         from: wallet.address,
         to: l2AccountAddress
@@ -107,7 +170,7 @@ async function L2topUp(wallet: zkweb3.Wallet, amount: BigNumber, l2AccountAddres
     const fee = gasLimit.mul(gasPrice);
     if (isOperationFeeAcceptable(amount, fee, MAX_LIQUIDATION_FEE_PERCENT)) {
         const transferHandle = await wallet.transfer({
-            token: zkweb3.utils.ETH_ADDRESS,
+            token: zkweb3.utils.L2_BASE_TOKEN_ADDRESS,
             amount,
             to: l2AccountAddress,
             overrides: {
@@ -117,7 +180,7 @@ async function L2topUp(wallet: zkweb3.Wallet, amount: BigNumber, l2AccountAddres
         });
         const hash = transferHandle.hash;
         console.log(
-            `ETH transfer to ${l2AccountName}, amount: ${ethers.utils.formatEther(amount)}, fee: ${ethers.utils.formatEther(
+            `${baseToken.BT_SYMBOL} transfer to ${l2AccountName}, amount: ${ethers.utils.formatEther(amount)}, fee: ${ethers.utils.formatEther(
                 fee
             )}, tx hash: ${hash}`
         );
@@ -189,6 +252,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
     const wallet = new zkweb3.Wallet(FEE_ACCOUNT_PRIVATE_KEY, zksyncProvider, ethProvider);
     const ethWallet = new ethers.Wallet(FEE_ACCOUNT_PRIVATE_KEY, ethProvider);
+    const baseTokenInfo = await setupBaseToken(ethWallet, wallet);
     console.log('Wallets are initialized');
 
     try {
@@ -198,29 +262,32 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         }
 
         console.log(`----------------------------------------------------------------------------`);
+        console.log(`isEthBased: ${baseTokenInfo.isEthBased} || BaseTokenContract: ${baseTokenInfo.BT_ADDRESS}`);
         // get initial balances
         let l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
         console.log(`Fee account L1 balance before top-up: ${ethers.utils.formatEther(l1feeAccountBalance)}`);
+        await getERC20Balance(wallet.address, baseTokenInfo);
 
         let l2feeAccountBalance = await zksyncProvider.getBalance(wallet.address);
-        console.log(`Fee account L2 balance before top-up: ${ethers.utils.formatEther(l2feeAccountBalance)}`);
+        console.log(`Fee account L2 balance before top-up: ${ethers.utils.formatEther(l2feeAccountBalance)} ${baseTokenInfo.BT_SYMBOL}`);
 
         const operatorBalance = await ethProvider.getBalance(OPERATOR_ADDRESS);
         console.log(`Operator L1 balance before top-up: ${ethers.utils.formatEther(operatorBalance)}`);
-        
+
         const blobOperatorBalance = await ethProvider.getBalance(BLOB_OPERATOR_ADDRESS);
         console.log(`Blob Operator L1 balance before top-up: ${ethers.utils.formatEther(blobOperatorBalance)}`);
 
         const withdrawerBalance = await ethProvider.getBalance(WITHDRAWAL_FINALIZER_ETH_ADDRESS);
         console.log(`Withdrawer L1 balance before top-up: ${ethers.utils.formatEther(withdrawerBalance)}`);
+        await getERC20Balance(WITHDRAWAL_FINALIZER_ETH_ADDRESS, baseTokenInfo);
 
         const paymasterL2Balance = TESTNET_PAYMASTER_ADDRESS
             ? await zksyncProvider.getBalance(TESTNET_PAYMASTER_ADDRESS)
             : BigNumber.from(0);
-        console.log(`Paymaster L2 balance before top-up: ${ethers.utils.formatEther(paymasterL2Balance)}`);
+        console.log(`Paymaster L2 balance before top-up: ${ethers.utils.formatEther(paymasterL2Balance)} ${baseTokenInfo.BT_SYMBOL}`);
 
         const watchdogBalance = await zksyncProvider.getBalance(WATCHDOG_ADDRESS);
-        console.log(`Watchdog L2 balance before top-up: ${ethers.utils.formatEther(watchdogBalance)}`);
+        console.log(`Watchdog L2 balance before top-up: ${ethers.utils.formatEther(watchdogBalance)} ${baseTokenInfo.BT_SYMBOL}`);
 
         console.log(`----------------------------------------------------------------------------`);
 
@@ -243,7 +310,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             );
 
             console.log('Step 1 - send ETH to paymaster');
-            await L2topUp(wallet, transferAmount, TESTNET_PAYMASTER_ADDRESS, 'paymaster');
+            await L2topUp(wallet, transferAmount, TESTNET_PAYMASTER_ADDRESS, 'paymaster', baseTokenInfo);
         }
 
         console.log(`----------------------------------------------------------------------------`);
@@ -264,19 +331,20 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
             );
 
             console.log('Step 2 - send ETH to era-watchdog');
-            await L2topUp(wallet, transferAmount, WATCHDOG_ADDRESS, 'watchdog');
+            await L2topUp(wallet, transferAmount, WATCHDOG_ADDRESS, 'watchdog', baseTokenInfo);
         }
 
         console.log(`----------------------------------------------------------------------------`);
 
         console.log('Step 3 - withdrawing tokens from ZkSync');
-        await withdrawForL1TopUps(wallet);
+        await withdrawForL1TopUps(wallet, baseTokenInfo);
 
         l2feeAccountBalance = await wallet.getBalance(wallet.address);
-        console.log(`L2 fee account balance after withdraw: ${ethers.utils.formatEther(l2feeAccountBalance)} ETH`);
+        console.log(`L2 fee account balance after withdraw: ${ethers.utils.formatEther(l2feeAccountBalance)} ${baseTokenInfo.BT_SYMBOL}`);
 
         l1feeAccountBalance = await ethProvider.getBalance(wallet.address);
         console.log(`L1 fee account balance after withdraw: ${ethers.utils.formatEther(l1feeAccountBalance)} ETH`);
+        await getERC20Balance(wallet.address, baseTokenInfo);
 
         console.log(`----------------------------------------------------------------------------`);
 

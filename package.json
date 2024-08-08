@@ -5,7 +5,7 @@
   "license": "MIT",
   "dependencies": {
     "ethers": "^5.7.0",
-    "zksync-web3": "^0.13.0"
+    "zksync-ethers": "^5.9.2"
   },
   "devDependencies": {
     "@types/chai": "^4.3.1",
