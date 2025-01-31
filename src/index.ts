@@ -230,7 +230,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         if (!TESTNET_PAYMASTER_ADDRESS) {
             console.log('Skipping step 1 -- send ETH to paymaster');
         } else {
-            [transferAmount, l2feeAccountBalance] = await calculateTransferAmount(
+            [transferAmount, l2feeAccountBalance] = calculateTransferAmount(
                 l2feeAccountBalance,
                 paymasterL2Balance,
                 UPPER_BOUND_PAYMASTER_THRESHOLD,
@@ -251,7 +251,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         if (!WATCHDOG_ADDRESS) {
             console.log('Skipping step 2 -- send ETH to era-watchdog');
         } else {
-            [transferAmount, l2feeAccountBalance] = await calculateTransferAmount(
+            [transferAmount, l2feeAccountBalance] = calculateTransferAmount(
                 l2feeAccountBalance,
                 watchdogBalance,
                 UPPER_BOUND_WATCHDOG_THRESHOLD,
@@ -281,7 +281,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
         console.log(`----------------------------------------------------------------------------`);
 
         // calculate amounts for top ups on L1
-        [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
+        [transferAmount, l1feeAccountBalance] = calculateTransferAmount(
             l1feeAccountBalance,
             operatorBalance,
             UPPER_BOUND_OPERATOR_THRESHOLD,
@@ -298,7 +298,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
         console.log(`----------------------------------------------------------------------------`);
 
-        [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
+        [transferAmount, l1feeAccountBalance] = calculateTransferAmount(
             l1feeAccountBalance,
             blobOperatorBalance,
             UPPER_BOUND_BLOB_OPERATOR_THRESHOLD,
@@ -315,7 +315,7 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 
         console.log(`----------------------------------------------------------------------------`);
 
-        [transferAmount, l1feeAccountBalance] = await calculateTransferAmount(
+        [transferAmount, l1feeAccountBalance] = calculateTransferAmount(
             l1feeAccountBalance,
             withdrawerBalance,
             UPPER_BOUND_WITHDRAWER_THRESHOLD,
