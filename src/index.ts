@@ -183,15 +183,15 @@ async function sendETH(ethWallet: ethers.Wallet, to: string, amount: BigNumber) 
 }
 
 (async () => {
-    const ethProvider = new ethers.providers.JsonRpcProvider(L1_WEB3_API_URL);
-    const zksyncProvider = new zkweb3.Provider(ZKSYNC_WEB3_API_URL);
-    console.log('Providers are initialized');
-
-    const wallet = new zkweb3.Wallet(FEE_ACCOUNT_PRIVATE_KEY, zksyncProvider, ethProvider);
-    const ethWallet = new ethers.Wallet(FEE_ACCOUNT_PRIVATE_KEY, ethProvider);
-    console.log('Wallets are initialized');
-
     try {
+        const ethProvider = new ethers.providers.JsonRpcProvider(L1_WEB3_API_URL);
+        const zksyncProvider = new zkweb3.Provider(ZKSYNC_WEB3_API_URL);
+        console.log('Providers are initialized');
+
+        const wallet = new zkweb3.Wallet(FEE_ACCOUNT_PRIVATE_KEY, zksyncProvider, ethProvider);
+        const ethWallet = new ethers.Wallet(FEE_ACCOUNT_PRIVATE_KEY, ethProvider);
+        console.log('Wallets are initialized');
+
         const isMainnet = (await ethProvider.getNetwork()).chainId == 1;
         if (TESTNET_PAYMASTER_ADDRESS && isMainnet) {
             throw new Error('Testnet paymaster should not be present on mainnet deployments');
